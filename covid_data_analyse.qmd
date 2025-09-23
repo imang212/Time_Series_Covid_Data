@@ -23,7 +23,7 @@ main {
 
 ## Načtení dat
 
-```{r echo=FALSE}
+```{r echo=FALSE, include=FALSE}
 #Načtení potřebných knihoven
 library(tidyverse)
 library(lubridate)
