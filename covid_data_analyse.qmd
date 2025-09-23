@@ -42,7 +42,7 @@ Sys.setlocale("LC_TIME", "C")
 #Načtení dat
 data <- read.csv("covid_timeseries.csv")
 
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width = 20, fig.height = 6)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width = 40, fig.height = 8)
 ```
 
 ```{r}
@@ -148,10 +148,10 @@ Nejdřív než se data převedli na časovou řadu, zkontrolovalo se, jestli nej
 
 ```{r}
 tail(data$date, 1)
-start_year <- min(data$year)
-start_month <- min(data$month[data$year == start_year])
+start_year <- min(monthly_data$year)
+start_month <- min(monthly_data$month[monthly_data$year == start_year])
 
-ts_data <- ts(data$new_cases, start = c(start_year, start_month), frequency = 12)
+ts_data <- ts(monthly_data$new_cases, start = c(start_year, start_month), frequency = 12)
 
 cat("Počet pozorování:", length(ts_data), "\n")
 cat("Rozsah hodnot:", round(range(ts_data, na.rm = TRUE), 2), "\n")
@@ -168,7 +168,7 @@ Vytvořili jsme časovou řadu v určitém daném rozmezí.
 
 ```{r}
 # Grafické zobrazení hlavní řady
-p1 <- ggplot(data, aes(x = date, y = new_cases)) +
+p1 <- ggplot(monthly_data, aes(x = date, y = new_cases)) +
   geom_line(color = "steelblue", alpha = 0.7) +
   geom_smooth(method = "loess", color = "red", se = FALSE) +
   labs(title = "Vývoj nových případů COVID-19",
@@ -178,7 +178,7 @@ p1 <- ggplot(data, aes(x = date, y = new_cases)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 # Boxplot podle měsíců pro identifikaci sezónnosti
-p2 <- ggplot(data, aes(x = factor(month), y = new_cases)) +
+p2 <- ggplot(monthly_data, aes(x = factor(month), y = new_cases)) +
   geom_boxplot(fill = "lightblue", alpha = 0.7) +
   geom_point(alpha = 0.4, position = position_jitter(width = 0.2)) +
   scale_x_discrete(labels = month.abb) +
@@ -212,15 +212,36 @@ plot(stl_decomp, main = "STL dekompozice časové řady nových případů")
 Výsledky říkají, která metoda nejlépe zachycuje základní trend, jak silné jsou krátkodobé vs. dlouhodobé fluktuace, zda je trend stabilní nebo se mění v čase.
 
 ```{r}
+data$year <- as.numeric(format(data$date, "%Y"))
+data$week <- as.numeric(format(data$date, "%U"))  # týden v roce (0-53)
+data$year_week <- paste(data$year, sprintf("%02d", data$week), sep = "-W")
+
+data <- data %>%
+  group_by(year, week, year_week) %>%
+  summarise(
+    new_cases = sum(new_cases, na.rm = TRUE),
+    new_deaths = sum(new_deaths, na.rm = TRUE),
+    stringency_index = mean(stringency_index, na.rm = TRUE),
+    hosp_patients = mean(hosp_patients, na.rm = TRUE),
+    reproduction_rate = mean(reproduction_rate, na.rm = TRUE),
+    date = max(date),  # poslední den týdne jako reprezentant
+    .groups = 'drop'
+  ) %>%
+  arrange(year, week) %>%
+  filter(week > 0)  # odstraníme týden 0 (může být neúplný)
+
+start_week <- min(data$month[data$year == start_year])
+ts_daily_data <- ts(data$new_cases, start = c(start_year, start_month), frequency = 52)
+
 # Klouzavé průměry různých řádů
-ma_3 <- SMA(data$new_cases, n = 3) 
-ma_12 <- SMA(data$new_cases, n = 12) 
+ma_3 <- SMA(data$new_cases, n = 4) 
+ma_12 <- SMA(data$new_cases, n = 52) 
 
 # Exponenciální vyrovnání - jednodušší přístup
-exp_smooth_model <- HoltWinters(ts_data, gamma = FALSE)
+exp_smooth_model <- HoltWinters(ts_daily_data, gamma = FALSE)
 
 # Vytvoříme jednoduché exponenciální vyhlazení pomocí ETS
-ets_model <- ets(ts_data, model = "AAN", damped = FALSE)
+ets_model <- ets(ts_daily_data, model = "AAN", damped = FALSE)
 exp_smooth_fitted <- fitted(ets_model)
 
 # Zajistíme stejnou délku (ETS vrací stejnou délku jako originální data)
@@ -239,7 +260,8 @@ trend_data <- data.frame(
   date = data$date,
   original = data$new_cases,
   ma_3 = ma_3,
-  ma_12 = ma_12 
+  ma_12 = ma_12,
+  exp_smooth = exp_smooth_full
 )
 
 # Přidáme exponenciální vyhlazení
@@ -249,7 +271,7 @@ trend_plot <- trend_data %>%
   pivot_longer(cols = -date, names_to = "method", values_to = "value") %>%
   filter(!is.na(value)) %>%  # Odfiltrujeme NA hodnoty
   ggplot(aes(x = date, y = value, color = method)) +
-  geom_line(alpha = 0.7, size = 0.8) +
+  geom_line(alpha = 0.7, size = 0.5) +
   scale_color_manual(values = c("original" = "gray50", "ma_3" = "green", "ma_12" = "red", "exp_smooth" = "purple"),
                      name = "Metoda",
                      labels = c("original" = "Originální data", 
@@ -282,23 +304,29 @@ Testování různých modelů s kombinacemi, jejich srovnání a grafické zobra
 ```{r}
 # Příprava dat pro regresní model
 data$t <- 1:nrow(data)
-data$sin_365 <- sin(2 * pi * data$t / 12)
-data$cos_365 <- cos(2 * pi * data$t / 12)
-data$sin_7 <- sin(2 * pi * data$t / 3)
-data$cos_7 <- cos(2 * pi * data$t / 3)
+data$sin_365 <- sin(2 * pi * data$t / 52)
+data$cos_365 <- cos(2 * pi * data$t / 52)
+data$sin_7 <- sin(2 * pi * data$t / 4)
+data$cos_7 <- cos(2 * pi * data$t / 4)
+data$sin_1 <- sin(2 * pi * data$t / 1) * 0.1
+data$cos_1 <- cos(2 * pi * data$t / 1) * 0.1
 
 # Model 1: Lineární trend + roční sezónnost
 model1 <- lm(new_cases ~ t + sin_365 + cos_365, data = data)
 # Model 2: Polynomiální trend + roční sezónnost
 model2 <- lm(new_cases ~ poly(t, 2) + sin_365 + cos_365, data = data)
-# Model 3: Lineární trend + roční + týdenní sezónnost
+# Model 3: Lineární trend + roční + měsíční sezónnost
 model3 <- lm(new_cases ~ t + sin_365 + cos_365 + sin_7 + cos_7, data = data)
-# Model 4: Polynomiální trend + roční + týdenní sezónnost
+# Model 4: Polynomiální trend + roční + měsíční sezónnost
 model4 <- lm(new_cases ~ poly(t, 2) + sin_365 + cos_365 + sin_7 + cos_7, data = data)
+# Model 5: Polynomiální trend + roční + měsíční + týdenní sezónnost
+model5 <- lm(new_cases ~ poly(t, 2) + sin_365 + cos_365 + sin_7 + cos_7 + sin_1 + cos_1, data = data)
+# Model 6: Polynomiální trend + roční + týdenní sezónnost
+model6 <- lm(new_cases ~ poly(t, 2) + sin_365 + cos_365 + sin_1 + cos_1, data = data)
 
 # Srovnání modelů
-models <- list(model1, model2, model3, model4)
-model_names <- c("Lin+Roční", "Poly+Roční", "Lin+Roční+Týdenní", "Poly+Roční+Týdenní")
+models <- list(model1, model2, model3, model4, model5, model6)
+model_names <- c("Lin+Roční", "Poly+Roční", "Lin+Roční+Měsíční", "Poly+Roční+Měsíční", "Poly+Roční+Měsíční+Týdenní", "Poly+Roční+Týdenní")
 
 # AIC a BIC srovnání
 comparison <- data.frame(
