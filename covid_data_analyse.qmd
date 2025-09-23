@@ -23,8 +23,7 @@ main {
 
 ## Načtení dat
 
-```{r}
-#| include: false
+```{r echo=FALSE}
 #Načtení potřebných knihoven
 library(tidyverse)
 library(lubridate)
@@ -45,33 +44,37 @@ data <- read.csv("covid_timeseries.csv")
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width = 40, fig.height = 8)
 ```
 
-```{r}
-#| echo: false
-#| message: false
-#| warning: false
-#Kontrola prázdných sloupců
-#prazdne_sloupce <- sapply(data, function(x) all(is.na(x)))
-#prazdne_sloupce
-#names(data)[prazdne_sloupce]
-```
-
 ## Úvod
 
 V této analýze se zaměřujem na hledání optimálního modelu pro časovou řadu COVID-19 dat od 5.1.2020 do 8.4.2024. Cílem je otestovat různé přístupy k modelování časových řad a najít ten, který nejlépe popisuje data a poskytuje nejpřesnější predikce.
 
-Analýza postupu je systematicky přes několik kroků: Explorativní analýza - grafické zobrazení a identifikace základních charakteristik Dekompozice - rozdělení řady na trend, sezónní a náhodnou složku Funkční modelování - hledání matematické funkce popisující trend a sezónnost SARIMA modelování - autoregresní přístup zachycující časovou závislost Multivariátní modelování - zahrnutí vlivu ostatních proměnných Srovnání a validace - výběr nejlepšího modelu na základě kritérií
+Analýza postupu je systematicky přes několik kroků: Explorativní analýza - grafické zobrazení a identifikace základních charakteristik:
 
-Jako hlavní řadu jsme zvolili new_cases(nové případy COVID-19), protože: Má výrazný dlouhodobý trend (růst během pandemie). Vykazuje sezónní chování (vyšší hodnoty v zimních měsících). Je klíčovou metrikou pro epidemiologické sledování. Má dostupná kvalitní data bez příliš mnoha chybějících hodnot.
+-   Dekompozice - rozdělení řady na trend, sezónní a náhodnou složku
+
+-   Funkční modelování - hledání matematické funkce popisující trend a sezónnost
+
+-   SARIMA modelování - autoregresní přístup zachycující časovou závislost
+
+-   Multivariátní modelování - zahrnutí vlivu ostatních proměnných
+
+-   Srovnání a validace - výběr nejlepšího modelu na základě kritérií
+
+Jako hlavní řadu jsme zvolili new_cases(nové případy COVID-19), protože:
+
+-   Má výrazný dlouhodobý trend (růst během pandemie).
+
+-   Vykazuje sezónní chování (vyšší hodnoty v zimních měsících).
+
+-   Je klíčovou metrikou pro epidemiologické sledování.
+
+-   Má dostupná kvalitní data bez příliš mnoha chybějících hodnot.
 
 ## Převod dat na časovou řadu
 
 ```{r}
-#cat("Struktura načtených dat:\n")
-#str(data)
-
 # Převod datumu na správný formát
 data$date <- as.Date(data$date)
-
 
 # Kontrola chybějících hodnot v new_cases
 cat("\nChybějící hodnoty v new_cases:\n")
@@ -130,40 +133,13 @@ data <- data %>%
   ) %>%
   arrange(year, week) %>%
   filter(week > 0)  # odstraníme týden 0 (může být neúplný)
-
-# Aktualizace hlavní data proměnné
-#data <- monthly_data
-
-## Kontrola kontinuity dat (zda nejsou mezery v datech)
-#date_range <- range(data$date, na.rm = TRUE)
-#expected_days <- as.numeric(diff(date_range)) + 1
-#actual_days <- nrow(data)
-#
-#
-#if(expected_days != actual_days) {
-#  cat("V datech jsou mezery, vyplním chybějící data interpolací.\n")
-#  # Vytvoření kompletní sekvence dat
-#  full_dates <- seq(from = min(data$date), to = max(data$date), by = #"day")
-#  full_data <- data.frame(date = full_dates)
-#  # Spojení s originálními daty
-#  data <- merge(full_data, data, by = "date", all.x = TRUE)
-#  # Interpolace chybějících hodnot new_cases
-#  if(any(is.na(data$new_cases))) {
-#    # Lineární interpolace
-#    data$new_cases <- approx(x = which(!is.na(data$new_cases)), 
-#                            y = #data$new_cases[!is.na(data$new_cases)], 
-#                            xout = 1:nrow(data), 
-#                            rule = 2)$y
-#    cat("Provedena lineární interpolace chybějících hodnot\n")
-#  }
-#}
   
 # Vytvoření časové řady
 cat("Data začínají od: ",as.numeric(format(min(data$date), "%d")) , as.numeric(format(min(data$date), "%m")), as.numeric(format(min(data$date), "%Y")), "\n")
 cat("Data končí: ", as.numeric(format(max(data$date), "%d")), as.numeric(format(max(data$date), "%m")),as.numeric(format(max(data$date), "%Y")))
 ```
 
-Nejdřív než se data převedli na časovou řadu, zkontrolovalo se, jestli nejsou chybějící hodnoty ve sloupcích, které se budou analyzovat. Zkontrovalo se, jestli nejsou v datech mezery, kolik mají pouorování a jaký je v nich rozsah hodnot.
+Nejdřív než se data převedli na časovou řadu, zkontrolovalo se, jestli nejsou chybějící hodnoty ve sloupcích, které se budou analyzovat. Zkontrovalo se, jestli nejsou v datech mezery, kolik mají pozorování a jaký je v nich rozsah hodnot.
 
 ```{r}
 tail(data$date, 1)
@@ -213,7 +189,7 @@ grid.arrange(p1, p2, ncol = 1)
 
 #### Dekompozice časové řady
 
-Dekompozice umožňuje pochopit strukturu dat, Identifikuje sílu trendové vs. sezónní složky a pomáhá při výběru vhodného typu modelu (aditivní vs. multiplikativní). STL dekompozice je Robustní, flexibilní metoda vhodná pro dlouhé časové řady.
+Dekompozice umožňuje pochopit strukturu dat, identifikuje sílu trendové vs. sezónní složky a pomáhá při výběru vhodného typu modelu (aditivní vs. multiplikativní). STL dekompozice je robustní, flexibilní metoda vhodná pro dlouhé časové řady.
 
 ```{r}
 # STL dekompozice
@@ -223,26 +199,25 @@ plot(stl_decomp, main = "STL dekompozice časové řady nových případů")
 
 #### Identifikace trendu pomocí vyhlazení
 
--   MA(7): Týdenní vyhlazení - odstraní týdenní fluktuace
--   MA(30): Měsíční vyhlazení - zobrazí střednědové trendy
--   MA(365): Roční vyhlazení - zachytí dlouhodobý trend
+-   MA(4): Měsíční vyhlazení - zobrazí střednědobé trendy
+-   MA(52): Roční vyhlazení - zachytí dlouhodobý trend
 -   Exponenciální vyhlazení: Dává vyšší váhu novějším pozorováním, vhodné pro predikci
 
 Výsledky říkají, která metoda nejlépe zachycuje základní trend, jak silné jsou krátkodobé vs. dlouhodobé fluktuace, zda je trend stabilní nebo se mění v čase.
 
 ```{r}
-start_week <- min(data$month[data$year == start_year])
-ts_daily_data <- ts(data$new_cases, start = c(start_year, start_month), frequency = 52)
+start_week <- min(data$week[data$year == start_year])
+ts_weekly_data <- ts(data$new_cases, start = c(start_year, start_week), frequency = 52)
 
 # Klouzavé průměry různých řádů
 ma_4 <- SMA(data$new_cases, n = 4) 
 ma_52 <- SMA(data$new_cases, n = 52) 
 
 # Exponenciální vyrovnání - jednodušší přístup
-exp_smooth_model <- HoltWinters(ts_daily_data, gamma = FALSE)
+exp_smooth_model <- HoltWinters(ts_weekly_data, gamma = FALSE)
 
 # Vytvoříme jednoduché exponenciální vyhlazení pomocí ETS
-ets_model <- ets(ts_daily_data, model = "AAN", damped = FALSE)
+ets_model <- ets(ts_weekly_data, model = "AAN", damped = FALSE)
 exp_smooth_fitted <- fitted(ets_model)
 
 # Zajistíme stejnou délku (ETS vrací stejnou délku jako originální data)
@@ -272,8 +247,8 @@ trend_plot <- trend_data %>%
   pivot_longer(cols = -date, names_to = "method", values_to = "value") %>%
   filter(!is.na(value)) %>%  # Odfiltrujeme NA hodnoty
   ggplot(aes(x = date, y = value, color = method)) +
-  geom_line(alpha = 0.7, size = 0.5) +
-  scale_color_manual(values = c("original" = "gray50", "ma_4" = "green", "ma_52" = "red", "exp_smooth" = "purple"),
+  geom_line(alpha = 0.7, size = 0.65) +
+  scale_color_manual(values = c("original" = "gray50", "ma_4" = "blue", "ma_52" = "red", "exp_smooth" = "purple"),
                      name = "Metoda",
                      labels = c("original" = "Originální data", 
                                 "ma_4" = "MA(4)", 
@@ -295,8 +270,6 @@ seasonal_component <- stl_decomp$time.series[,"seasonal"]
 cat("\nSouhrn sezónní složky:\n")
 print(summary(seasonal_component))
 ```
-
-STL dekompozice identifikovala výrazný rostoucí trend s několika vrcholy odpovídajícími vlnám pandemie. Sezónní složka je relativně stabilní s roční periodicitou. Exponenciální vyrovnání dobře zachycuje dlouhodobý trend.
 
 ## Hledání optimálního funkčního modelu (trend + sezónnost)
 
@@ -353,15 +326,19 @@ ggplot(data, aes(x = date)) +
   theme_minimal()
 ```
 
-Nejlepší funkční model podle AIC je model s polynomiálním trendem a kombinací roční i týdenní sezónnosti. Model vysvětluje značnou část variability dat.
+Nejlepší funkční model podle AIC je model s polynomiálním trendem a roční sezónností. Model vysvětluje značnou část variability dat.
 
 ## Hledání optimálního SARIMA modelu
 
 #### Kontrola stacionarity
 
-ADF test: Testuje přítomnost jednotkového kořene
+**ADF test**: Testuje přítomnost jednotkového kořene.
 
-KPSS test: Testuje stacionaritu kolem trendu Pokud je řada nestacionární, aplikujeme diferenciaci.
+**KPSS test**: Testuje stacionaritu kolem trendu. Pokud je řada nestacionární, aplikujeme diferenciaci.
+
+**Stacionární řada**: denní změny (rozdíly) těchto počtů, kolísají kolem nuly bez trendu
+
+**Nestacionární řada**: počty covidových případů, mají trend (rostou/klesají), sezónnost (vlny).
 
 ```{r}
 # Kontrola stacionarity
@@ -372,13 +349,13 @@ kpss_test <- kpss.test(ts_data)
 print(paste("KPSS test p-hodnota:", round(kpss_test$p.value, 4)))
 ```
 
-ADF test říká, že řada je stacionární a KPSS, že řada není stacionární. Řada je na hraně stacionarity (obsahuje trend, sezónnost nebo slabou autokorelaci), proto se dělá diferenciace.
+ADF a KPSS testy říkají, že řada je nestacionární, proto se dělá diferenciace. Řada má sezónní trend.
 
 #### PACF a ACF grafy
 
-ACF (Autokorelační funkce): Indikuje MA složku
+**ACF (Autokorelační funkce)**: Ukazuje míru korelace mezi hodnotami časové řady a jejími zpožděnými verzemi (lagy). Pokud je ACF výrazná u několika lagů, znamená to, že minulost silně ovlivňuje současnost. Postupný pokles ACF může naznačovat MA (moving average) proces.
 
-PACF (Parciální ACF): Indikuje AR složku
+**PACF (Parciální ACF)**: Ukazuje korelaci mezi hodnotami časové řady a jejich lagy po odečtení vlivu mezilehlých lagů. Výrazná hodnota PACF na určitém lagu (např. lag 2) znamená, že tento lag má přímý vliv na současnost. Pokud PACF náhle klesne po určitém lagu, může to naznačovat AR (Autoregressive) proces.
 
 ```{r}
 # ACF a PACF grafy
@@ -400,6 +377,8 @@ if(adf_test$p.value > 0.05) {
 }
 ```
 
+Data nevykazují silnou závislost na minulých hodnotách (kromě jedné slabé záporné na lag 1). To by mohlo znamenat, že jednoduchý model (např. jen AR(1) nebo dokonce obyčejný průměr) už bude docela dostačující.
+
 #### Testování SARIMA kombinací
 
 ```{r}
@@ -409,19 +388,18 @@ BIC(auto_sarima_a)
 #(auto_sarima_b <- auto.arima(ts_data, ic = "bic"))
 
 period <- 52
-plot(ts_daily_data)
 
 selected_sarima <- tryCatch({
-  arima(ts_daily_data, 
+  arima(ts_weekly_data, 
         order = c(0, 0, 0),
         seasonal = list(order = c(0, 0, 0), period = period))
 }, error = function(e) {
   cat("Hlavní SARIMA model selhal:", e$message, "\n")
   # Jednodušší fallback
-  arima(ts_daily_data, order = c(0, 1, 0))
+  arima(ts_weekly_data, order = c(0, 1, 0))
 })
 alternative_sarima <- tryCatch({
-  arima(ts_daily_data, 
+  arima(ts_weekly_data, 
         order = c(0, 1, 0),
         seasonal = list(order = c(0, 1, 0), period = period))
 }, error = function(e) {
@@ -466,7 +444,7 @@ other_series <- c("new_deaths", "stringency_index", "hosp_patients", "reproducti
 
 # Křížová korelace s různými zpožděními
 ccf_results <- list()
-max_lag <- 12
+max_lag <- 4
 
 par(mfrow = c(2,2))
 for(i in 1:length(other_series)) {
