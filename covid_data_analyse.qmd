@@ -434,9 +434,21 @@ SARIMA model byl identifikován pomocí automatického vyhledávání. Model zac
 
 ## Analýza závislosti na jiných řadách
 
-Křížová korelační funkce (CCF): Měří korelaci mezi dvěma časovými řadami při různých zpožděních Pozitivní lag: Y předchází X (Y ovlivňuje budoucí hodnoty X) Negativní lag: X předchází Y (X ovlivňuje budoucí hodnoty Y) Zero lag: Současná korelace
+**Křížová korelační funkce** (CCF): Měří korelaci mezi dvěma časovými řadami při různých zpožděních
 
-Testované proměnné: new_deaths - úmrtí (očekáváme zpoždění za případy) stringency_index - přísnost opatření (může předcházet změnám v případech) hosp_patients - hospitalizace (může následovat za případy) reproduction_rate - reprodukční číslo (může předcházet změnám)
+-   **Pozitivní lag**: Y předchází X (Y ovlivňuje budoucí hodnoty X)
+
+-   **Negativní lag**: X předchází Y (X ovlivňuje budoucí hodnoty Y) Zero lag: Současná korelace
+
+**Testované proměnné**:
+
+-   **new_deaths** - úmrtí (očekáváme zpoždění za případy)
+
+-   **stringency_index** - přísnost opatření (může předcházet změnám v případech)
+
+-   **hosp_patients** - hospitalizace (může následovat za případy)
+
+-   **reproduction_rate** - reprodukční číslo (může předcházet změnám)
 
 ```{r}
 # Příprava dalších časových řad
@@ -480,9 +492,20 @@ for(series in names(ccf_results)) {
 
 ```
 
-Identifikovali jsme významné korelace mezi hlavní řadou a ostatními proměnnými s různými zpožděními. Tyto informace použijeme pro konstrukci vícenásobného modelu.
+## Výsledky
 
-## Optimální model s externími regresory (ARIMAX a VAR model)
+-   **new_deaths × new_deaths**
+    -   Korelace na lag 0 i ±1 je pozitivní a nad hranicí významnosti → úmrtí jsou silně závislá na předchozích hodnotách (autoregrese).
+    -   Dává smysl použít zpoždění `new_deaths` (např. lag 1) jako vysvětlující proměnnou.
+-   **new_deaths × stringency_index**
+    -   Korelace je malá, téměř všechny sloupce v intervalu - vládní opatření (stringency_index) nemají okamžitou silnou lineární souvislost s denním počtem úmrtí v krátkém horizontu ±4 dní.
+-   **new_deaths × hosp_patients**
+    -   Výrazně pozitivní korelace na lag 0 a kladných lagech - počet hospitalizovaných je dobrý prediktor úmrtí i pro několik následujících dní.
+    -   Určitě má smysl zahrnout hosp_patients (lag 0 nebo 1) do ARIMAX modelu.
+-   **new_deaths × reproduction_rate**
+    -   Korelace je kolem nuly, uvnitř CI - reprodukční číslo v takto krátkém horizontu přímo neovlivňuje úmrtí (což dává smysl – efekt se projeví až po týdnech).
+
+## Optimální model s externími regresory (ARIMAX model)
 
 Kombinace časové dynamiky ARIMA s vlivem externích faktorů. Arimax model zachycuje autokorelaci v datech a současně modeluje vliv dalších proměnných. VAR model místo jednosměrného vztahu (X → Y) modelujeme vzájemné ovlivnění všech proměnných.
 
@@ -520,13 +543,19 @@ models_comparison <- data.frame(
 print(models_comparison)
 ```
 
-ARIMAX model kombinuje autoregresní chování s vlivem externích proměnných. VAR model zachycuje vzájemné závislosti mezi všemi proměnnými. Srovnání AIC/BIC ukazuje, který přístup je nejlepší.
+ARIMAX model kombinuje autoregresní chování s vlivem externích proměnných.
 
 #### Kontrola předpokladů regresních modelů
 
-Zde ověříme, zda naše modely splňují předpoklady, jako je nezávislost reziduí, homoskendasticita (konstantní rozptyl), normalita reziduí a Ljung-Box test.
+Zde ověříme, zda naše modely splňují předpoklady, jako je nezávislost reziduí, heteroskedasticita (konstantní rozptyl), normalita reziduí a Ljung-Box test.
 
-Při porušení předpokladů se dělá: Autokorelace: Zvýšení řádu ARIMA modelu. Nenormalita: Transformace dat nebo robustní metody. Heteroskedasticita: GARCH modely nebo weighted regression.
+Při porušení předpokladů se dělá:
+
+-   Autokorelace: Zvýšení řádu ARIMA modelu.
+
+-   Nenormalita: Transformace dat nebo robustní metody.
+
+-   Heteroskedasticita: GARCH modely nebo weighted regression.
 
 ```{r}
 # Diagnostika residuí pro všechny modely
@@ -578,7 +607,7 @@ Srovnáme Funkční model, SARIMA model a ARIMAX model. Vytvoříme Grafické sr
 
 ```{r}
 # Predikce na 10 období dopředu
-horizon <- 10
+horizon <- 52
 # Kontrola kvality modelů před predikcí
 cat("Kontrola SARIMA modelu:\n")
 cat("Koeficienty:", coef(final_sarima), "\n")
@@ -665,7 +694,7 @@ if(all(pred_sarima$mean == 0)) {
 
 
 # Určíme počet historických pozorování k zobrazení (posledních 24 měsíců nebo méně)
-last_n_obs <- 12  
+last_n_obs <- 136
 cat("Zobrazím posledních", last_n_obs, "měsíčních pozorování\n")
 if(nrow(data) < last_n_obs) last_n_obs <- nrow(data);
 
@@ -764,7 +793,7 @@ print("Predikce na příštích 10 měsíců:")
 print(predictions_summary)
 ```
 
-Srovnání ukazuje rozdíly mezi jednotlivými přístupy. SARIMA model obvykle poskytuje konzervativnější odhady, zatímco funkční model může lépe zachytit sezónní změny. ARIMAX model zohledňuje vlivy externích faktorů.
+Srovnání ukazuje rozdíly mezi jednotlivými přístupy. SARIMA model ukazuje nejlepší výsledek.
 
 ## Závěrečné srovnání a doporučení
 
