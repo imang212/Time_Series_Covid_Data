@@ -72,6 +72,7 @@ Jako hlavní řadu jsme zvolili new_cases(nové případy COVID-19), protože: M
 # Převod datumu na správný formát
 data$date <- as.Date(data$date)
 
+
 # Kontrola chybějících hodnot v new_cases
 cat("\nChybějící hodnoty v new_cases:\n")
 missing_summary <- sapply(data$new_cases, function(x) sum(is.na(x)))
@@ -111,6 +112,24 @@ monthly_data <- data %>%
 
 cat("Počet měsíčních pozorování:", nrow(monthly_data), "\n")
 cat("Rozsah dat:", range(monthly_data$date), "\n")
+
+data$year <- as.numeric(format(data$date, "%Y"))
+data$week <- as.numeric(format(data$date, "%U"))  # týden v roce (0-53)
+data$year_week <- paste(data$year, sprintf("%02d", data$week), sep = "-W")
+
+data <- data %>%
+  group_by(year, week, year_week) %>%
+  summarise(
+    new_cases = sum(new_cases, na.rm = TRUE),
+    new_deaths = sum(new_deaths, na.rm = TRUE),
+    stringency_index = mean(stringency_index, na.rm = TRUE),
+    hosp_patients = mean(hosp_patients, na.rm = TRUE),
+    reproduction_rate = mean(reproduction_rate, na.rm = TRUE),
+    date = max(date),  # poslední den týdne jako reprezentant
+    .groups = 'drop'
+  ) %>%
+  arrange(year, week) %>%
+  filter(week > 0)  # odstraníme týden 0 (může být neúplný)
 
 # Aktualizace hlavní data proměnné
 #data <- monthly_data
@@ -212,30 +231,12 @@ plot(stl_decomp, main = "STL dekompozice časové řady nových případů")
 Výsledky říkají, která metoda nejlépe zachycuje základní trend, jak silné jsou krátkodobé vs. dlouhodobé fluktuace, zda je trend stabilní nebo se mění v čase.
 
 ```{r}
-data$year <- as.numeric(format(data$date, "%Y"))
-data$week <- as.numeric(format(data$date, "%U"))  # týden v roce (0-53)
-data$year_week <- paste(data$year, sprintf("%02d", data$week), sep = "-W")
-
-data <- data %>%
-  group_by(year, week, year_week) %>%
-  summarise(
-    new_cases = sum(new_cases, na.rm = TRUE),
-    new_deaths = sum(new_deaths, na.rm = TRUE),
-    stringency_index = mean(stringency_index, na.rm = TRUE),
-    hosp_patients = mean(hosp_patients, na.rm = TRUE),
-    reproduction_rate = mean(reproduction_rate, na.rm = TRUE),
-    date = max(date),  # poslední den týdne jako reprezentant
-    .groups = 'drop'
-  ) %>%
-  arrange(year, week) %>%
-  filter(week > 0)  # odstraníme týden 0 (může být neúplný)
-
 start_week <- min(data$month[data$year == start_year])
 ts_daily_data <- ts(data$new_cases, start = c(start_year, start_month), frequency = 52)
 
 # Klouzavé průměry různých řádů
-ma_3 <- SMA(data$new_cases, n = 4) 
-ma_12 <- SMA(data$new_cases, n = 52) 
+ma_4 <- SMA(data$new_cases, n = 4) 
+ma_52 <- SMA(data$new_cases, n = 52) 
 
 # Exponenciální vyrovnání - jednodušší přístup
 exp_smooth_model <- HoltWinters(ts_daily_data, gamma = FALSE)
@@ -259,8 +260,8 @@ if(length(exp_smooth_fitted) < n_obs) {
 trend_data <- data.frame(
   date = data$date,
   original = data$new_cases,
-  ma_3 = ma_3,
-  ma_12 = ma_12,
+  ma_4 = ma_4,
+  ma_52 = ma_52,
   exp_smooth = exp_smooth_full
 )
 
@@ -272,11 +273,11 @@ trend_plot <- trend_data %>%
   filter(!is.na(value)) %>%  # Odfiltrujeme NA hodnoty
   ggplot(aes(x = date, y = value, color = method)) +
   geom_line(alpha = 0.7, size = 0.5) +
-  scale_color_manual(values = c("original" = "gray50", "ma_3" = "green", "ma_12" = "red", "exp_smooth" = "purple"),
+  scale_color_manual(values = c("original" = "gray50", "ma_4" = "green", "ma_52" = "red", "exp_smooth" = "purple"),
                      name = "Metoda",
                      labels = c("original" = "Originální data", 
-                                "ma_3" = "MA(3)", 
-                                "ma_12" = "MA(12)", "exp_smooth" = "Exp. vyhlazení")) +
+                                "ma_4" = "MA(4)", 
+                                "ma_52" = "MA(52)", "exp_smooth" = "Exp. vyhlazení")) +
   labs(title = "Srovnání metod vyhlazení trendu",
        x = "Datum", y = "Hodnota") +
   theme_minimal() +
@@ -308,8 +309,8 @@ data$sin_365 <- sin(2 * pi * data$t / 52)
 data$cos_365 <- cos(2 * pi * data$t / 52)
 data$sin_7 <- sin(2 * pi * data$t / 4)
 data$cos_7 <- cos(2 * pi * data$t / 4)
-data$sin_1 <- sin(2 * pi * data$t / 1) * 0.1
-data$cos_1 <- cos(2 * pi * data$t / 1) * 0.1
+data$sin_1 <- sin(2 * pi * data$t / 1)
+data$cos_1 <- cos(2 * pi * data$t / 1)
 
 # Model 1: Lineární trend + roční sezónnost
 model1 <- lm(new_cases ~ t + sin_365 + cos_365, data = data)
@@ -358,7 +359,9 @@ Nejlepší funkční model podle AIC je model s polynomiálním trendem a kombin
 
 #### Kontrola stacionarity
 
-ADF test: Testuje přítomnost jednotkového kořene KPSS test: Testuje stacionaritu kolem trendu Pokud je řada nestacionární, aplikujeme diferenciaci.
+ADF test: Testuje přítomnost jednotkového kořene
+
+KPSS test: Testuje stacionaritu kolem trendu Pokud je řada nestacionární, aplikujeme diferenciaci.
 
 ```{r}
 # Kontrola stacionarity
@@ -373,7 +376,9 @@ ADF test říká, že řada je stacionární a KPSS, že řada není stacionárn
 
 #### PACF a ACF grafy
 
-ACF (Autokorelační funkce): Indikuje MA složku PACF (Parciální ACF): Indikuje AR složku
+ACF (Autokorelační funkce): Indikuje MA složku
+
+PACF (Parciální ACF): Indikuje AR složku
 
 ```{r}
 # ACF a PACF grafy
@@ -403,19 +408,22 @@ cat("Hledání vhodné SARIMA kombinace...\n")
 BIC(auto_sarima_a)
 #(auto_sarima_b <- auto.arima(ts_data, ic = "bic"))
 
+period <- 52
+plot(ts_daily_data)
+
 selected_sarima <- tryCatch({
-  arima(ts_data, 
-        order = c(1, 1, 1),
-        seasonal = list(order = c(1, 1, 1), period = 12))  # period = 12 pro měsíce
+  arima(ts_daily_data, 
+        order = c(0, 0, 0),
+        seasonal = list(order = c(0, 0, 0), period = period))
 }, error = function(e) {
   cat("Hlavní SARIMA model selhal:", e$message, "\n")
   # Jednodušší fallback
-  arima(ts_data, order = c(0, 1, 1))
+  arima(ts_daily_data, order = c(0, 1, 0))
 })
 alternative_sarima <- tryCatch({
-  arima(ts_data, 
-        order = c(0, 1, 1),
-        seasonal = list(order = c(1, 1, 0), period = 12))
+  arima(ts_daily_data, 
+        order = c(0, 1, 0),
+        seasonal = list(order = c(0, 1, 0), period = period))
 }, error = function(e) {
   cat("Alternativní model selhal:", e$message, "\n")
   return(NULL)
@@ -425,8 +433,8 @@ if(!is.null(alternative_sarima)) {
   aic1 <- AIC(selected_sarima)
   aic2 <- AIC(alternative_sarima)
   
-  cat("SARIMA(1,1,1)x(1,1,1)[12] AIC:", round(aic1, 2), "\n")
-  cat("SARIMA(0,1,1)x(1,1,0)[12] AIC:", round(aic2, 2), "\n")
+  cat("SARIMA(0, 0, 0)x(0, 0, 0)[52] AIC:", round(aic1, 2), "\n")
+  cat("SARIMA(0, 0, 1)x(0, 1, 0)[52] AIC:", round(aic2, 2), "\n")
   
   if(aic2 < aic1) {
     final_sarima <- alternative_sarima
