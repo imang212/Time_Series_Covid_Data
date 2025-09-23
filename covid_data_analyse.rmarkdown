@@ -19,9 +19,13 @@ main {
 </style>
 ```
 
+
+
 # Analýza covid dat na časové řady
 
 ## Načtení dat
+
+
 
 ```{r}
 #| include: false
@@ -55,6 +59,8 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width =
 #names(data)[prazdne_sloupce]
 ```
 
+
+
 ## Úvod
 
 V této analýze se zaměřujem na hledání optimálního modelu pro časovou řadu COVID-19 dat od 5.1.2020 do 8.4.2024. Cílem je otestovat různé přístupy k modelování časových řad a najít ten, který nejlépe popisuje data a poskytuje nejpřesnější predikce.
@@ -64,6 +70,8 @@ Analýza postupu je systematicky přes několik kroků: Explorativní analýza -
 Jako hlavní řadu jsme zvolili new_cases(nové případy COVID-19), protože: Má výrazný dlouhodobý trend (růst během pandemie). Vykazuje sezónní chování (vyšší hodnoty v zimních měsících). Je klíčovou metrikou pro epidemiologické sledování. Má dostupná kvalitní data bez příliš mnoha chybějících hodnot.
 
 ## Převod dat na časovou řadu
+
+
 
 ```{r}
 #cat("Struktura načtených dat:\n")
@@ -144,7 +152,11 @@ cat("Data začínají od: ",as.numeric(format(min(data$date), "%d")) , as.numeri
 cat("Data končí: ", as.numeric(format(max(data$date), "%d")), as.numeric(format(max(data$date), "%m")),as.numeric(format(max(data$date), "%Y")))
 ```
 
+
+
 Nejdřív než se data převedli na časovou řadu, zkontrolovalo se, jestli nejsou chybějící hodnoty ve sloupcích, které se budou analyzovat. Zkontrovalo se, jestli nejsou v datech mezery, kolik mají pouorování a jaký je v nich rozsah hodnot.
+
+
 
 ```{r}
 tail(data$date, 1)
@@ -162,9 +174,13 @@ tail(ts_data, 20)
 
 ```
 
+
+
 Vytvořili jsme časovou řadu v určitém daném rozmezí.
 
 ## Grafické zobrazení řady
+
+
 
 ```{r}
 # Grafické zobrazení hlavní řady
@@ -190,17 +206,23 @@ p2 <- ggplot(data, aes(x = factor(month), y = new_cases)) +
 grid.arrange(p1, p2, ncol = 1)
 ```
 
+
+
 ## Dekompozice a identifikace trendu
 
 #### Dekompozice časové řady
 
 Dekompozice umožňuje pochopit strukturu dat, Identifikuje sílu trendové vs. sezónní složky a pomáhá při výběru vhodného typu modelu (aditivní vs. multiplikativní). STL dekompozice je Robustní, flexibilní metoda vhodná pro dlouhé časové řady.
 
+
+
 ```{r}
 # STL dekompozice
 stl_decomp <- stl(ts_data, s.window = "periodic", t.window = NULL, robust = TRUE)
 plot(stl_decomp, main = "STL dekompozice časové řady nových případů")
 ```
+
+
 
 #### Identifikace trendu pomocí vyhlazení
 
@@ -210,6 +232,8 @@ plot(stl_decomp, main = "STL dekompozice časové řady nových případů")
 -   Exponenciální vyhlazení: Dává vyšší váhu novějším pozorováním, vhodné pro predikci
 
 Výsledky říkají, která metoda nejlépe zachycuje základní trend, jak silné jsou krátkodobé vs. dlouhodobé fluktuace, zda je trend stabilní nebo se mění v čase.
+
+
 
 ```{r}
 # Klouzavé průměry různých řádů
@@ -273,11 +297,15 @@ cat("\nSouhrn sezónní složky:\n")
 print(summary(seasonal_component))
 ```
 
+
+
 STL dekompozice identifikovala výrazný rostoucí trend s několika vrcholy odpovídajícími vlnám pandemie. Sezónní složka je relativně stabilní s roční periodicitou. Exponenciální vyrovnání dobře zachycuje dlouhodobý trend.
 
 ## Hledání optimálního funkčního modelu (trend + sezónnost)
 
 Testování různých modelů s kombinacemi, jejich srovnání a grafické zobrazení fitování.
+
+
 
 ```{r}
 # Příprava dat pro regresní model
@@ -324,6 +352,8 @@ ggplot(data, aes(x = date)) +
   theme_minimal()
 ```
 
+
+
 Nejlepší funkční model podle AIC je model s polynomiálním trendem a kombinací roční i týdenní sezónnosti. Model vysvětluje značnou část variability dat.
 
 ## Hledání optimálního SARIMA modelu
@@ -331,6 +361,8 @@ Nejlepší funkční model podle AIC je model s polynomiálním trendem a kombin
 #### Kontrola stacionarity
 
 ADF test: Testuje přítomnost jednotkového kořene KPSS test: Testuje stacionaritu kolem trendu Pokud je řada nestacionární, aplikujeme diferenciaci.
+
+
 
 ```{r}
 # Kontrola stacionarity
@@ -341,11 +373,15 @@ kpss_test <- kpss.test(ts_data)
 print(paste("KPSS test p-hodnota:", round(kpss_test$p.value, 4)))
 ```
 
+
+
 ADF test říká, že řada je stacionární a KPSS, že řada není stacionární. Řada je na hraně stacionarity (obsahuje trend, sezónnost nebo slabou autokorelaci), proto se dělá diferenciace.
 
 #### PACF a ACF grafy
 
 ACF (Autokorelační funkce): Indikuje MA složku PACF (Parciální ACF): Indikuje AR složku
+
+
 
 ```{r}
 # ACF a PACF grafy
@@ -367,7 +403,11 @@ if(adf_test$p.value > 0.05) {
 }
 ```
 
+
+
 #### Testování SARIMA kombinací
+
+
 
 ```{r}
 cat("Hledání vhodné SARIMA kombinace...\n")
@@ -416,6 +456,8 @@ if(!is.null(alternative_sarima)) {
 checkresiduals(final_sarima)
 ```
 
+
+
 SARIMA model byl identifikován pomocí automatického vyhledávání. Model zachycuje jak autoregresní chování, tak sezónní komponenty. Diagnostika residuí ukazuje, zda jsou splněny předpoklady modelu.
 
 ## Analýza závislosti na jiných řadách
@@ -423,6 +465,8 @@ SARIMA model byl identifikován pomocí automatického vyhledávání. Model zac
 Křížová korelační funkce (CCF): Měří korelaci mezi dvěma časovými řadami při různých zpožděních Pozitivní lag: Y předchází X (Y ovlivňuje budoucí hodnoty X) Negativní lag: X předchází Y (X ovlivňuje budoucí hodnoty Y) Zero lag: Současná korelace
 
 Testované proměnné: new_deaths - úmrtí (očekáváme zpoždění za případy) stringency_index - přísnost opatření (může předcházet změnám v případech) hosp_patients - hospitalizace (může následovat za případy) reproduction_rate - reprodukční číslo (může předcházet změnám)
+
+
 
 ```{r}
 # Příprava dalších časových řad
@@ -466,11 +510,15 @@ for(series in names(ccf_results)) {
 
 ```
 
+
+
 Identifikovali jsme významné korelace mezi hlavní řadou a ostatními proměnnými s různými zpožděními. Tyto informace použijeme pro konstrukci vícenásobného modelu.
 
 ## Optimální model s externími regresory (ARIMAX a VAR model)
 
 Kombinace časové dynamiky ARIMA s vlivem externích faktorů. Arimax model zachycuje autokorelaci v datech a současně modeluje vliv dalších proměnných. VAR model místo jednosměrného vztahu (X → Y) modelujeme vzájemné ovlivnění všech proměnných.
+
+
 
 ```{r}
 # Příprava zpožděných proměnných na základě CCF analýzy
@@ -506,6 +554,8 @@ models_comparison <- data.frame(
 print(models_comparison)
 ```
 
+
+
 ARIMAX model kombinuje autoregresní chování s vlivem externích proměnných. VAR model zachycuje vzájemné závislosti mezi všemi proměnnými. Srovnání AIC/BIC ukazuje, který přístup je nejlepší.
 
 #### Kontrola předpokladů regresních modelů
@@ -513,6 +563,8 @@ ARIMAX model kombinuje autoregresní chování s vlivem externích proměnných.
 Zde ověříme, zda naše modely splňují předpoklady, jako je nezávislost reziduí, homoskendasticita (konstantní rozptyl), normalita reziduí a Ljung-Box test.
 
 Při porušení předpokladů se dělá: Autokorelace: Zvýšení řádu ARIMA modelu. Nenormalita: Transformace dat nebo robustní metody. Heteroskedasticita: GARCH modely nebo weighted regression.
+
+
 
 ```{r}
 # Diagnostika residuí pro všechny modely
@@ -554,6 +606,8 @@ for(model_name in names(models_to_check)) {
 }
 ```
 
+
+
 Kontrola ukazuje, zda jsou splněny základní předpoklady modelů - nezávislost residuí (ACF, Ljung-Box test) a jejich normalita (Shapiro test, Q-Q ploty).
 
 ## Predikce budoucích hodnot
@@ -561,6 +615,8 @@ Kontrola ukazuje, zda jsou splněny základní předpoklady modelů - nezávislo
 Zde otestujeme predikční schopnost jednotlivých modelů a porovnáme jejich výkon na 10 období do budoucna.
 
 Srovnáme Funkční model, SARIMA model a ARIMAX model. Vytvoříme Grafické srovnání modelů a kvantitativní hodnocení.
+
+
 
 ```{r}
 # Predikce na 10 období dopředu
@@ -619,7 +675,11 @@ pred_arimax = forecast(arimax_model, xreg = future_external, h = horizon)
 cat("ARIMAX predikce dokončena\n")
 ```
 
+
+
 #### Grafické srovnání a hodnocení modelů
+
+
 
 ```{r}
 tail(data$date, 1)        # poslední datum v datech
@@ -750,11 +810,15 @@ print("Predikce na příštích 10 měsíců:")
 print(predictions_summary)
 ```
 
+
+
 Srovnání ukazuje rozdíly mezi jednotlivými přístupy. SARIMA model obvykle poskytuje konzervativnější odhady, zatímco funkční model může lépe zachytit sezónní změny. ARIMAX model zohledňuje vlivy externích faktorů.
 
 ## Závěrečné srovnání a doporučení
 
 Zhodnocení všech testovaných přístupů a formulace doporučení pro praxi.
+
+
 
 ```{r}
 # Finální srovnání všech modelů
@@ -784,3 +848,4 @@ cat("Nejlepší model podle AIC:", best_model_name, "\n")
 cat("AIC:", round(final_comparison$AIC[best_model_idx], 2), "\n")
 cat("RMSE:", round(final_comparison$RMSE[best_model_idx], 2), "\n")
 ```
+
