@@ -20,6 +20,23 @@ main {
 ```
 # Analýza covid dat na časové řady
 Tato verze dokumentu opravuje a sjednocuje práci s frekvencemi (měsíčně vs. týdně), zavádí stabilizaci rozptylu (Box‑Cox), dělá out‑of‑sample validaci (posledních 10 měsíců) a zároveň pro účely vizualizace zachovává širší grafický horizon (52). Dále řeší zacházení s nulovými denními záznamy (ořeže pouze vedoucí a koncové nuly, nikoli vnitřní) a doplňuje výpis koeficientů a VIF pro ARIMAX.
+
+## Úvod
+V této analýze se zaměřujem na hledání optimálního modelu pro časovou řadu COVID-19 dat od 5.1.2020 do 8.4.2024. Cílem je otestovat různé přístupy k modelování časových řad a najít ten, který nejlépe popisuje data a poskytuje nejpřesnější predikce.
+Analýza postupu je systematicky přes několik kroků: Explorativní analýza - grafické zobrazení a identifikace základních charakteristik:
+-   Dekompozice - rozdělení řady na trend, sezónní a náhodnou složku
+-   Funkční modelování - hledání matematické funkce popisující trend a sezónnost
+-   SARIMA modelování - autoregresní přístup zachycující časovou závislost
+-   Multivariátní modelování - zahrnutí vlivu ostatních proměnných
+-   Srovnání a validace - výběr nejlepšího modelu na základě kritérií
+Jako hlavní řadu jsme zvolili new_cases(nové případy COVID-19), protože:
+-   Má výrazný dlouhodobý trend (růst během pandemie).
+-   Vykazuje sezónní chování (vyšší hodnoty v zimních měsících).
+-   Je klíčovou metrikou pro epidemiologické sledování.
+-   Má dostupná kvalitní data bez příliš mnoha chybějících hodnot.
+
+------------------------------------------------------------------------
+
 ```{r echo=FALSE, include=FALSE}
 # Potřebné balíčky
 library(tidyverse)
@@ -45,7 +62,7 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width =
 
 ```{r}
 # Načtení dat
-raw <- read.csv("H:\\Data\\School\\CAS_covid_data\\covid_timeseries.csv")
+raw <- read.csv("covid_timeseries.csv")
 original_rows <- nrow(raw)
 data <- raw[!is.na(raw$new_cases), ]
 cat("\nOdstraněno", original_rows - nrow(raw), "řádků s chybějícími hodnotami v new_cases\n")
