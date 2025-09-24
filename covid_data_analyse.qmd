@@ -35,13 +35,26 @@ library(gridExtra)
 library(TTR)
 library(seasonal)
 library(vars)
+library(ggplot2)
 
 Sys.setlocale("LC_TIME", "C")
 
 #Načtení dat
 data <- read.csv("covid_timeseries.csv")
 
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width = 40, fig.height = 8)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width = 20, fig.height = 10, 
+  fig.retina = 2,        # pro ostřejší grafy
+  dpi = 300,             # rozlišení grafů
+  dev = "png",           # formát obrázků
+  fig.align = "center"   # zarovnání grafů na střed)
+)
+theme_set(theme_minimal(base_size = 26)) # základní velikost písma
+update_geom_defaults("line", list(size = 2)) # výchozí tloušťka čar
+update_geom_defaults("point", list(size = 4)) # výchozí velikost bodů
+par(cex = 3,           # velikost písma
+    cex.axis = 2.5,    # velikost popisků os
+    cex.lab = 2.5,     # velikost názvů os
+    cex.main = 3)      # velikost hlavního titulku
 ```
 
 ## Úvod
@@ -142,33 +155,31 @@ cat("Data končí: ", as.numeric(format(max(data$date), "%d")), as.numeric(forma
 Nejdřív než se data převedli na časovou řadu, zkontrolovalo se, jestli nejsou chybějící hodnoty ve sloupcích, které se budou analyzovat. Zkontrovalo se, jestli nejsou v datech mezery, kolik mají pozorování a jaký je v nich rozsah hodnot.
 
 ```{r}
-tail(data$date, 1)
 start_year <- min(monthly_data$year)
-start_month <- min(monthly_data$month[monthly_data$year == start_year])
+#start_month <- min(monthly_data$month[monthly_data$year == start_year])
+start_week <- min(data$week[data$year == start_year])
 
-ts_data <- ts(monthly_data$new_cases, start = c(start_year, start_month), frequency = 12)
+ts_data <- ts(data$new_cases, start = c(start_year, start_week), frequency = 52.18)
 
 cat("Počet pozorování:", length(ts_data), "\n")
 cat("Rozsah hodnot:", round(range(ts_data, na.rm = TRUE), 2), "\n")
 summary(ts_data)
 head(ts_data, 20)
 tail(ts_data, 20)
-
-
 ```
 
-Vytvořili jsme časovou řadu v určitém daném rozmezí.
+Vytvořili jsme časovou řadu s týdenní frekvencí.
 
 ## Grafické zobrazení řady
 
 ```{r}
 # Grafické zobrazení hlavní řady
-p1 <- ggplot(monthly_data, aes(x = date, y = new_cases)) +
+p1 <- ggplot(data, aes(x = date, y = new_cases)) +
   geom_line(color = "steelblue", alpha = 0.7) +
   geom_smooth(method = "loess", color = "red", se = FALSE) +
   labs(title = "Vývoj nových případů COVID-19",
        x = "Datum", y = "Počet nových případů",
-       subtitle = "Měsíční agregace denních dat s trendem (červená linie)") +
+       subtitle = "Týdenní agregace denních dat s trendem (červená linie)") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
@@ -192,8 +203,9 @@ grid.arrange(p1, p2, ncol = 1)
 Dekompozice umožňuje pochopit strukturu dat, identifikuje sílu trendové vs. sezónní složky a pomáhá při výběru vhodného typu modelu (aditivní vs. multiplikativní). STL dekompozice je robustní, flexibilní metoda vhodná pro dlouhé časové řady.
 
 ```{r}
+ts_log <- log1p(ts_data)  # log stabilizace
 # STL dekompozice
-stl_decomp <- stl(ts_data, s.window = "periodic", t.window = NULL, robust = TRUE)
+stl_decomp <- stl(ts_log, s.window = "periodic", t.window = NULL, robust = TRUE)
 plot(stl_decomp, main = "STL dekompozice časové řady nových případů")
 ```
 
@@ -207,11 +219,11 @@ Výsledky říkají, která metoda nejlépe zachycuje základní trend, jak siln
 
 ```{r}
 start_week <- min(data$week[data$year == start_year])
-ts_weekly_data <- ts(data$new_cases, start = c(start_year, start_week), frequency = 52)
+ts_weekly_data <- ts(data$new_cases, start = c(start_year, start_week), frequency = 52.18)
 
 # Klouzavé průměry různých řádů
 ma_4 <- SMA(data$new_cases, n = 4) 
-ma_52 <- SMA(data$new_cases, n = 52) 
+ma_52 <- SMA(data$new_cases, n = 52.18) 
 
 # Exponenciální vyrovnání - jednodušší přístup
 exp_smooth_model <- HoltWinters(ts_weekly_data, gamma = FALSE)
@@ -278,29 +290,33 @@ Testování různých modelů s kombinacemi, jejich srovnání a grafické zobra
 ```{r}
 # Příprava dat pro regresní model
 data$t <- 1:nrow(data)
-data$sin_365 <- sin(2 * pi * data$t / 52)
-data$cos_365 <- cos(2 * pi * data$t / 52)
+data$sin_365 <- sin(2 * pi * data$t / 52.18)
+data$cos_365 <- cos(2 * pi * data$t / 52.18)
 data$sin_7 <- sin(2 * pi * data$t / 4)
 data$cos_7 <- cos(2 * pi * data$t / 4)
 data$sin_1 <- sin(2 * pi * data$t / 1)
 data$cos_1 <- cos(2 * pi * data$t / 1)
 
 # Model 1: Lineární trend + roční sezónnost
-model1 <- lm(new_cases ~ t + sin_365 + cos_365, data = data)
+model1 <- lm(log1p(new_cases) ~ t + sin_365 + cos_365, data = data)
 # Model 2: Polynomiální trend + roční sezónnost
-model2 <- lm(new_cases ~ poly(t, 2) + sin_365 + cos_365, data = data)
+model2 <- lm(log1p(new_cases) ~ poly(t, 2) + sin_365 + cos_365, data = data)
 # Model 3: Lineární trend + roční + měsíční sezónnost
-model3 <- lm(new_cases ~ t + sin_365 + cos_365 + sin_7 + cos_7, data = data)
+model3 <- lm(log1p(new_cases) ~ t + sin_365 + cos_365 + sin_7 + cos_7, data = data)
 # Model 4: Polynomiální trend + roční + měsíční sezónnost
-model4 <- lm(new_cases ~ poly(t, 2) + sin_365 + cos_365 + sin_7 + cos_7, data = data)
-# Model 5: Polynomiální trend + roční + měsíční + týdenní sezónnost
-model5 <- lm(new_cases ~ poly(t, 2) + sin_365 + cos_365 + sin_7 + cos_7 + sin_1 + cos_1, data = data)
-# Model 6: Polynomiální trend + roční + týdenní sezónnost
-model6 <- lm(new_cases ~ poly(t, 2) + sin_365 + cos_365 + sin_1 + cos_1, data = data)
+model4 <- lm(log1p(new_cases) ~ poly(t, 2) + sin_365 + cos_365 + sin_7 + cos_7, data = data)
+# Model 5: Lineární trend + roční + měsíční sezónnost + týdenní sezónnost
+model5 <- lm(log1p(new_cases) ~ t + sin_365 + cos_365 + sin_7 + cos_7 + sin_1 + cos_1, data = data)
+# Model 6: Polynomiální trend + roční + měsíční + týdenní sezónnost
+model6 <- lm(log1p(new_cases) ~ poly(t, 2) + sin_365 + cos_365 + sin_7 + cos_7 + sin_1 + cos_1, data = data)
+# Model 7: Lineární trend + roční + týdenní sezónnost
+model7 <- lm(log1p(new_cases) ~ t + sin_365 + cos_365 + sin_1 + cos_1, data = data)
+# Model 8: Polynomiální trend + roční + týdenní sezónnost
+model8 <- lm(log1p(new_cases) ~ poly(t, 2) + sin_365 + cos_365 + sin_1 + cos_1, data = data)
 
 # Srovnání modelů
-models <- list(model1, model2, model3, model4, model5, model6)
-model_names <- c("Lin+Roční", "Poly+Roční", "Lin+Roční+Měsíční", "Poly+Roční+Měsíční", "Poly+Roční+Měsíční+Týdenní", "Poly+Roční+Týdenní")
+models <- list(model1, model2, model3, model4, model5, model6, model7, model8)
+model_names <- c("Lin+Roční", "Poly+Roční", "Lin+Roční+Měsíční", "Poly+Roční+Měsíční", "Lin+Roční+Měsíční+Týdenní" ,"Poly+Roční+Měsíční+Týdenní", "Lin+Roční+Týdenní", "Poly+Roční+Týdenní")
 
 # AIC a BIC srovnání
 comparison <- data.frame(
@@ -316,7 +332,7 @@ best_func_model <- models[[which.min(comparison$AIC)]]
 print(summary(best_func_model))
 
 # Grafické zobrazení fitování
-data$fitted_func <- fitted(best_func_model)
+data$fitted_func <-  expm1(fitted(best_func_model))
 ggplot(data, aes(x = date)) +
   geom_line(aes(y = new_cases), color = "black", alpha = 0.6, size = 0.5) +
   geom_line(aes(y = fitted_func), color = "red", size = 1) +
@@ -341,11 +357,12 @@ Nejlepší funkční model podle AIC je model s polynomiálním trendem a ročn�
 **Nestacionární řada**: počty covidových případů, mají trend (rostou/klesají), sezónnost (vlny).
 
 ```{r}
+ts_diff <- diff(ts_log) # 1. diferenciace
 # Kontrola stacionarity
-adf_test <- adf.test(ts_data)
+adf_test <- adf.test(ts_diff)
 print(paste("ADF test p-hodnota:", round(adf_test$p.value, 4)))
 # KPSS test stacionarity
-kpss_test <- kpss.test(ts_data)
+kpss_test <- kpss.test(ts_diff)
 print(paste("KPSS test p-hodnota:", round(kpss_test$p.value, 4)))
 ```
 
@@ -383,49 +400,10 @@ Data nevykazují silnou závislost na minulých hodnotách (kromě jedné slabé
 
 ```{r}
 cat("Hledání vhodné SARIMA kombinace...\n")
-(auto_sarima_a <- auto.arima(ts_data, seasonal = TRUE)) #sezonní diference Zt = 0.004 + 0156*Zt-1 + 0.09*Et-1 + 0.11*Et-2 - 0.53Zt-1
+(auto_sarima_a <- auto.arima(ts_log, seasonal = TRUE)) #sezonní diference Zt = 0.004 + 0156*Zt-1 + 0.09*Et-1 + 0.11*Et-2 - 0.53Zt-1
 BIC(auto_sarima_a)
 #(auto_sarima_b <- auto.arima(ts_data, ic = "bic"))
-
-period <- 52
-
-selected_sarima <- tryCatch({
-  arima(ts_weekly_data, 
-        order = c(0, 0, 0),
-        seasonal = list(order = c(0, 0, 0), period = period))
-}, error = function(e) {
-  cat("Hlavní SARIMA model selhal:", e$message, "\n")
-  # Jednodušší fallback
-  arima(ts_weekly_data, order = c(0, 1, 0))
-})
-alternative_sarima <- tryCatch({
-  arima(ts_weekly_data, 
-        order = c(0, 1, 0),
-        seasonal = list(order = c(0, 1, 0), period = period))
-}, error = function(e) {
-  cat("Alternativní model selhal:", e$message, "\n")
-  return(NULL)
-})
-
-if(!is.null(alternative_sarima)) {
-  aic1 <- AIC(selected_sarima)
-  aic2 <- AIC(alternative_sarima)
-  
-  cat("SARIMA(0, 0, 0)x(0, 0, 0)[52] AIC:", round(aic1, 2), "\n")
-  cat("SARIMA(0, 0, 1)x(0, 1, 0)[52] AIC:", round(aic2, 2), "\n")
-  
-  if(aic2 < aic1) {
-    final_sarima <- alternative_sarima
-    cat("Lepší je alternativní model.\n")
-  } else {
-    final_sarima <- selected_sarima
-    cat("Lepší je původní model.\n")
-  }
-} else {
-  final_sarima <- selected_sarima
-  cat("Používám původní SARIMA model pro měsíční data.\n")
-}
-
+final_sarima <- auto_sarima_a
 # Diagnostika residuí
 checkresiduals(final_sarima)
 ```
@@ -524,7 +502,7 @@ external_vars <- cbind(
 
 # Odstranění NA hodnot
 complete_idx <- complete.cases(cbind(data$new_cases, external_vars))
-ts_complete <- ts(data$new_cases[complete_idx], start = c(start_year, start_month), frequency = 365.25)
+ts_complete <- ts(log1p(data$new_cases[complete_idx]), start = c(start_year, start_week), frequency = 52)
 external_complete <- external_vars[complete_idx, ]
 
 # ARIMAX model
@@ -607,7 +585,7 @@ Srovnáme Funkční model, SARIMA model a ARIMAX model. Vytvoříme Grafické sr
 
 ```{r}
 # Predikce na 10 období dopředu
-horizon <- 52
+horizon <- 10
 # Kontrola kvality modelů před predikcí
 cat("Kontrola SARIMA modelu:\n")
 cat("Koeficienty:", coef(final_sarima), "\n")
@@ -624,10 +602,10 @@ cat("Posledních 5 hodnot:", tail(ts_data, 5), "\n")
 future_t <- (nrow(data)+1):(nrow(data)+horizon)
 future_data <- data.frame(
   t = future_t,
-  sin_365 = sin(2 * pi * future_t / 365.25),
-  cos_365 = cos(2 * pi * future_t / 365.25),
-  sin_7 = sin(2 * pi * future_t / 7),
-  cos_7 = cos(2 * pi * future_t / 7)
+  sin_365 = sin(2 * pi * future_t / 52.18),
+  cos_365 = cos(2 * pi * future_t / 52.18),
+  sin_7 = sin(2 * pi * future_t / 1),
+  cos_7 = cos(2 * pi * future_t / 1)
 )
 # Jednoduchá predikce bez složitého rozlišování modelů
 pred_func <- predict(best_func_model, newdata = future_data, interval = "prediction")
@@ -650,8 +628,7 @@ cat("SARIMA predikce dokončena\n")
 # ARIMAX predikce (potřebujeme budoucí hodnoty externích proměnných)
 # Pro zjednodušení použijeme poslední dostupné hodnoty
 last_external <- external_complete[nrow(external_complete), , drop = FALSE]
-future_external <- matrix(rep(as.numeric(last_external), horizon), 
-                          nrow = horizon, byrow = TRUE)
+future_external <- matrix(rep(as.numeric(last_external), horizon), nrow = horizon, byrow = TRUE)
 
 colnames(future_external) <- colnames(external_complete)
 
@@ -665,12 +642,8 @@ cat("ARIMAX predikce dokončena\n")
 #### Grafické srovnání a hodnocení modelů
 
 ```{r}
-tail(data$date, 1)        # poslední datum v datech
-```
-
-```{r}
 # Grafické zobrazení predikcí
-future_dates <- seq(max(data$date) + 1, by = "day", length.out = horizon)
+future_dates <- seq(max(data$date) + 7, by = "week", length.out = horizon)
 
 cat("Budoucí data:", as.character(future_dates[1:3]), "...\n")
 
@@ -687,41 +660,36 @@ if(all(pred_sarima$mean == 0)) {
   cat("Model summary:\n")
   print(summary(final_sarima))
   # Oprava: použij poslední hodnotu
-  pred_sarima$mean <- rep(tail(as.numeric(ts_data), 1), horizon)
+  pred_sarima$mean <- rep(tail(as.numeric(ts_weekly_data), 1), horizon)
   pred_sarima$lower[,2] <- pred_sarima$mean * 0.8
   pred_sarima$upper[,2] <- pred_sarima$mean * 1.2
 }
 
-
 # Určíme počet historických pozorování k zobrazení (posledních 24 měsíců nebo méně)
-last_n_obs <- 136
+last_n_obs <- 50
 cat("Zobrazím posledních", last_n_obs, "měsíčních pozorování\n")
 if(nrow(data) < last_n_obs) last_n_obs <- nrow(data);
-
 
 # Historická data
 historical_dates <- tail(data$date, last_n_obs)
 historical_values <- tail(data$new_cases, last_n_obs)
 
-# Kontrola, že predikce mají správnou délku a nejsou NA
-pred_func_clean <- pred_func[,1]
+#Kontrola, že predikce mají správnou délku a nejsou NA 
+pred_func_clean <- pred_func[,1] 
 pred_func_lower <- pred_func[,2] 
-pred_func_upper <- pred_func[,3]
-
-pred_sarima_clean <- as.numeric(pred_sarima$mean)
-pred_sarima_lower <- as.numeric(pred_sarima$lower[,2])
-pred_sarima_upper <- as.numeric(pred_sarima$upper[,2])
-
-pred_arimax_clean <- as.numeric(pred_arimax$mean)
-pred_arimax_lower <- as.numeric(pred_arimax$lower[,2])
-pred_arimax_upper <- as.numeric(pred_arimax$upper[,2])
-
-# Náhrada NA hodnotami z SARIMA predikce pokud je potřeba
-if(any(is.na(pred_func_clean))) {
-  cat("Opravuji NA v funkčních predikcích\n")
+pred_func_upper <- pred_func[,3] 
+pred_sarima_clean <- as.numeric(pred_sarima$mean) 
+pred_sarima_lower <- as.numeric(pred_sarima$lower[,2]) 
+pred_sarima_upper <- as.numeric(pred_sarima$upper[,2]) 
+pred_arimax_clean <- as.numeric(pred_arimax$mean) 
+pred_arimax_lower <- as.numeric(pred_arimax$lower[,2]) 
+pred_arimax_upper <- as.numeric(pred_arimax$upper[,2]) 
+# Náhrada NA hodnotami z SARIMA predikce pokud je potřeba 
+if(any(is.na(pred_func_clean))) { 
+  cat("Opravuji NA v funkčních predikcích\n") 
   pred_func_clean[is.na(pred_func_clean)] <- pred_sarima$mean[is.na(pred_func_clean)]
   pred_func_lower[is.na(pred_func_lower)] <- pred_sarima$lower[is.na(pred_func_lower),2]
-  pred_func_upper[is.na(pred_func_upper)] <- pred_sarima$upper[is.na(pred_func_upper),2]
+  pred_func_upper[is.na(pred_func_upper)] <- pred_sarima$upper[is.na(pred_func_upper),2] 
 }
 
 # Vytvoření clean dat pro ggplot
@@ -752,30 +720,34 @@ cat("NA v actual:", sum(is.na(plot_data_clean$actual)), "\n")
 cat("NA v func_pred:", sum(is.na(plot_data_clean$func_pred)), "\n")
 cat("NA v sarima_pred:", sum(is.na(plot_data_clean$sarima_pred)), "\n")
 
+base_plot <- ggplot(plot_data_clean, aes(x = date)) +
+  geom_line(aes(y = actual), color = "black", size = 1, na.rm = TRUE) +
+  geom_point(aes(y = actual), color = "black", size = 1.2, na.rm = TRUE) +
+  geom_vline(xintercept = max(historical_dates), linetype = "dashed", alpha = 0.7)
 ```
 
 ```{r}
 # Vylepšený graf predikcí
 prediction_plot <- ggplot(plot_data_clean, aes(x = date)) +
   # Historická data - body a čáry
-  geom_line(aes(y = actual), color = "black", size = 1.2, alpha = 0.8, na.rm = TRUE) +
-  geom_point(aes(y = actual), color = "black", size = 2, alpha = 0.7, na.rm = TRUE) +
+  geom_line(aes(y = actual), color = "black", size = 1, alpha = 0.8, na.rm = TRUE) +
+  geom_point(aes(y = actual), color = "black", size = 1.2, alpha = 0.7, na.rm = TRUE) +
   # Funkční model
-  geom_line(aes(y = func_pred), color = "red", size = 1.2, na.rm = TRUE) +
-  geom_point(aes(y = func_pred), color = "red", size = 2, na.rm = TRUE) +
+  geom_line(aes(y = func_pred), color = "red", size = 1, na.rm = TRUE) +
+  geom_point(aes(y = func_pred), color = "red", size = 1.2, na.rm = TRUE) +
   geom_ribbon(aes(ymin = func_lower, ymax = func_upper), fill = "red", alpha = 0.2, na.rm = TRUE) +
   # SARIMA model
-  geom_line(aes(y = sarima_pred), color = "blue", size = 1.2, na.rm = TRUE) +
-  geom_point(aes(y = sarima_pred), color = "blue", size = 2, na.rm = TRUE) +
+  geom_line(aes(y = sarima_pred), color = "blue", size = 1, na.rm = TRUE) +
+  geom_point(aes(y = sarima_pred), color = "blue", size = 1.2, na.rm = TRUE) +
   geom_ribbon(aes(ymin = sarima_lower, ymax = sarima_upper), fill = "blue", alpha = 0.2, na.rm = TRUE) +
   # ARIMAX model
-  geom_line(aes(y = arimax_pred), color = "green", size = 1.2, na.rm = TRUE) +
-  geom_point(aes(y = arimax_pred), color = "green", size = 2, na.rm = TRUE) +
+  geom_line(aes(y = arimax_pred), color = "green", size = 1, na.rm = TRUE) +
+  geom_point(aes(y = arimax_pred), color = "green", size = 1.2, na.rm = TRUE) +
   geom_ribbon(aes(ymin = arimax_lower, ymax = arimax_upper), fill = "green", alpha = 0.2, na.rm = TRUE) +
   # Vertikální čára oddělující historii od predikcí
   geom_vline(xintercept = max(historical_dates), linetype = "dashed", alpha = 0.7, color = "gray50", size = 1) +
   # Lepší popisky a téma
-  labs(title = "Predikce měsíčních nových případů - srovnání modelů", x = "Datum", y = "Počet případů (měsíčně)",
+  labs(title = "Predikce týdenních nových případů - srovnání modelů", x = "Datum", y = "Počet případů (měsíčně)",
        subtitle = paste("Historická data (černá) | Predikce: Funkční (červená), SARIMA (modrá), ARIMAX (zelená)", "\nPřerušovaná čára označuje konec historických dat")) +
   theme_minimal() +
   theme(legend.position = "none", plot.title = element_text(size = 14, hjust = 0.5, face = "bold"), plot.subtitle = element_text(size = 11, hjust = 0.5),
@@ -817,13 +789,4 @@ final_comparison <- data.frame(
 
 print("Finální srovnání modelů:")
 print(final_comparison)
-
-# Doporučení nejlepšího modelu
-best_model_idx <- which.min(final_comparison$AIC)
-best_model_name <- final_comparison$Model[best_model_idx]
-
-cat("\n=== DOPORUČENÍ ===\n")
-cat("Nejlepší model podle AIC:", best_model_name, "\n")
-cat("AIC:", round(final_comparison$AIC[best_model_idx], 2), "\n")
-cat("RMSE:", round(final_comparison$RMSE[best_model_idx], 2), "\n")
 ```
