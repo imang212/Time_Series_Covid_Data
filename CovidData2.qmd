@@ -23,16 +23,29 @@ Tato verze dokumentu opravuje a sjednocuje práci s frekvencemi (měsíčně vs.
 
 ## Úvod
 V této analýze se zaměřujem na hledání optimálního modelu pro časovou řadu COVID-19 dat od 5.1.2020 do 8.4.2024. Cílem je otestovat různé přístupy k modelování časových řad a najít ten, který nejlépe popisuje data a poskytuje nejpřesnější predikce.
-Analýza postupu je systematicky přes několik kroků: Explorativní analýza - grafické zobrazení a identifikace základních charakteristik:
+
+Analýza postupu je systematicky přes několik kroků:
+
+-   Explorativní analýza - grafické zobrazení a identifikace základních charakteristik:
+
 -   Dekompozice - rozdělení řady na trend, sezónní a náhodnou složku
+
 -   Funkční modelování - hledání matematické funkce popisující trend a sezónnost
+
 -   SARIMA modelování - autoregresní přístup zachycující časovou závislost
+
 -   Multivariátní modelování - zahrnutí vlivu ostatních proměnných
+
 -   Srovnání a validace - výběr nejlepšího modelu na základě kritérií
+
 Jako hlavní řadu jsme zvolili new_cases(nové případy COVID-19), protože:
+
 -   Má výrazný dlouhodobý trend (růst během pandemie).
+
 -   Vykazuje sezónní chování (vyšší hodnoty v zimních měsících).
+
 -   Je klíčovou metrikou pro epidemiologické sledování.
+
 -   Má dostupná kvalitní data bez příliš mnoha chybějících hodnot.
 
 ------------------------------------------------------------------------
@@ -165,11 +178,21 @@ fc_sarima_eval <- InvBoxCox(fc_sarima_bc$mean[1:h_eval], lambda)
 checkresiduals(auto_sarima)
 ```
 
-Používáme auto.arima() s vypnutým stepwise a approximation, což znamená, že funkce prohledá větší množství modelů (lepší šance najít optimální). `lambda = NULL`: data už jsou transformovaná Box-Coxem, takže žádná další transformace se nedělá. `seasonal = TRUE`: povoluje sezónní složky.
+Používáme auto.arima() s vypnutým stepwise a approximation, což znamená, že funkce prohledá větší množství modelů (lepší šance najít optimální).
 
-**AR(1) složka**: silná autoregrese (φ = 0.95 - hodně závisí na minulém měsíci). **MA(1) složka**: korekce šumu s vahou = 0.49. **Žádná diferenciace (d=0)**: řada je stacionární po log transformaci. **Žádná sezónní složka**: auto.arima nenašla silnou sezónnost (zajímavé, ale může odpovídat tomu, že v pandemických datech nebyla pravidelná roční periodicita).
+`lambda = NULL`: data už jsou transformovaná Box-Coxem, takže žádná další transformace se nedělá.
 
-Predikujeme 52 měsíců dopředu pro graf (dlouhý horizont - hezky se ukáže budoucí chování). Ale pro vyhodnocení používáme jen prvních 10 měsíců → přesně odpovídá zadání.
+`seasonal = TRUE`: povoluje sezónní složky.
+
+**AR(1) složka**: silná autoregrese (φ = 0.95 - hodně závisí na minulém měsíci).
+
+**MA(1) složka**: korekce šumu s vahou = 0.49.
+
+**Žádná diferenciace (d=0)**: řada je stacionární po log transformaci.
+
+**Žádná sezónní složka**: auto.arima nenašla silnou sezónnost (zajímavé, ale může odpovídat tomu, že v pandemických datech nebyla pravidelná roční periodicita).
+
+Predikujeme 52 měsíců dopředu pro graf (dlouhý horizont - hezky se ukáže budoucí chování). Ale pro vyhodnocení používáme jen prvních 10 měsíců - přesně odpovídá zadání.
 
 ## Funkční model (regrese s trigonometrickými členy)
 
@@ -196,7 +219,20 @@ pred_func <- predict(best_func_model, newdata = future_df, interval = "predictio
 pred_func_eval <- pred_func[1:h_eval, "fit"]
 ```
 
-Na základě zvolených měsíčních agregovaných dat jsme sestavili regresní model s kvadratickým trendem a harmonickými sezónními členy (sinus a kosinus s periodou 12 měsíců). Model popisuje vývoj počtu nově hlášených případů COVID-19 v čase a současně zachycuje sezónní opakování (zpravidla zimní a podzimní vlny epidemie). Výsledky ukazují: - Kvadratický trend je statisticky významný (p \< 0.001 pro kvadratický člen), což znamená, že dlouhodobý vývoj nelze vysvětlit pouze lineárním nárůstem nebo poklesem – v datech se střídají období prudkého růstu a poklesu. - Sezónní složka má význam zejména v kosinové části (p ≈ 0.014), což potvrzuje, že existuje pravidelný roční cyklus, typicky s vrcholem v zimních měsících a útlumem v létě. - Hodnota adjustovaného R² ≈ 0.40 znamená, že model vysvětluje přibližně 40 % variability počtu případů. Pro epidemiologická data je to poměrně dobrý výsledek, protože počty případů jsou ovlivněny i řadou vnějších faktorů (např. změny testovací strategie, vládní opatření, varianta viru). - Rezidua modelu jsou náhodně rozptýlena kolem nuly (potvrzeno diagnostickými grafy – ACF/PACF reziduí), což naznačuje, že model dostatečně zachytil základní trend i sezónnost a neobsahuje výrazné systematické chyby. \## ARIMAX (výběr lagů z CCF + tabulka koeficientů a VIF)
+Na základě zvolených měsíčních agregovaných dat jsme sestavili regresní model s kvadratickým trendem a harmonickými sezónními členy (sinus a kosinus s periodou 12 měsíců).
+Model popisuje vývoj počtu nově hlášených případů COVID-19 v čase a současně zachycuje sezónní opakování (zpravidla zimní a podzimní vlny epidemie).
+
+Výsledky ukazují:
+
+- Kvadratický trend je statisticky významný (p \< 0.001 pro kvadratický člen), což znamená, že dlouhodobý vývoj nelze vysvětlit pouze lineárním nárůstem nebo poklesem – v datech se střídají období prudkého růstu a poklesu.
+
+- Sezónní složka má význam zejména v kosinové části (p ≈ 0.014), což potvrzuje, že existuje pravidelný roční cyklus, typicky s vrcholem v zimních měsících a útlumem v létě.
+
+- Hodnota adjustovaného R² ≈ 0.40 znamená, že model vysvětluje přibližně 40 % variability počtu případů. Pro epidemiologická data je to poměrně dobrý výsledek, protože počty případů jsou ovlivněny i řadou vnějších faktorů (např. změny testovací strategie, vládní opatření, varianta viru).
+
+- Rezidua modelu jsou náhodně rozptýlena kolem nuly (potvrzeno diagnostickými grafy – ACF/PACF reziduí), což naznačuje, že model dostatečně zachytil základní trend i sezónnost a neobsahuje výrazné systematické chyby.
+
+## ARIMAX (výběr lagů z CCF + tabulka koeficientů a VIF)
 
 ```{r}
 # Připravíme externí proměnné z monthly_data, vyhladíme / interpolujeme chybějící hodnoty
@@ -296,7 +332,21 @@ fc_arimax <- forecast(arimax_model, xreg = future_xreg, h = h_plot)
 fc_arimax_eval <- fc_arimax$mean[1:h_eval]
 ```
 
-Funkce ccf_candidates() hledá, které lagy mají statisticky významnou korelaci s hlavní řadou (new_cases). Výstupy ukazují, že například: - new_deaths: nejsilnější negativní korelace v lags -6 až -2 (pravděpodobně opožděný efekt úmrtí). - hosp_patients: pozitivní korelace kolem lag 0. - stringency_index: slabší, ale lag 1 může být relevantní. - reproduction_rate: jen slabá korelace lag 0. Proměnné s významným lagem se zahrnují jako lagované regresory do ARIMAX modelu. Lagy odpovídají výsledkům CCF: - deaths_lag1: počet úmrtí z minulého měsíce - hosp_lag0: současný počet hospitalizovaných - stringency_lag1: index opatření z minulého měsíce \## Vyhodnocení modelů na holdout (prvních h_eval predikcí)
+Funkce ccf_candidates() hledá, které lagy mají statisticky významnou korelaci s hlavní řadou (new_cases).
+
+Výstupy ukazují, že například:
+
+- new_deaths: nejsilnější negativní korelace v lags -6 až -2 (pravděpodobně opožděný efekt úmrtí).
+- hosp_patients: pozitivní korelace kolem lag 0. - stringency_index: slabší, ale lag 1 může být relevantní.
+- reproduction_rate: jen slabá korelace lag 0. Proměnné s významným lagem se zahrnují jako lagované regresory do ARIMAX modelu.
+
+Lagy odpovídají výsledkům CCF:
+
+- deaths_lag1: počet úmrtí z minulého měsíce
+- hosp_lag0: současný počet hospitalizovaných
+- stringency_lag1: index opatření z minulého měsíce 
+
+## Vyhodnocení modelů na holdout (prvních h_eval predikcí)
 
 ```{r}
 # Invert transformace SARIMA predikcí (již invertované výše)
@@ -326,9 +376,27 @@ scores <- data.frame(
 print(scores)
 ```
 
-Funkční model - RMSE a MAPE jsou obrovské (řádově stovky milionů, MAPE přes 370 %). - Trend + sinusy nestačí zachytit prudké výkyvy a velkou variabilitu COVID-19 dat. - Funguje spíše jako popisný model než predikční. SARIMA model - RMSE ≈ 2,38 milionu, MAPE ≈ 3,3 %. - Skvěle zachycuje krátkodobou dynamiku, stabilní predikce. - I přes jednoduchou ARIMA(1,0,1) bez externích proměnných je to nejlepší prediktor na holdout datech. ARIMAX model - RMSE a MAPE vyšší než SARIMA, ale výrazně lepší než čistě funkční model. - Přidání lagovaných externích proměnných nevedlo k lepšímu hodnocení na holdout, pravděpodobně kvůli nestabilním nebo šumovým vstupům. - V některých případech (delší horizont predikce) může být ARIMAX užitečný, pokud se externí proměnné vyvíjejí stabilně.
+Funkční model:
 
-Pro krátkodobou predikci (10 měsíců) je SARIMA model jasně nejlepší. Funkční model je interpretovatelný a dobře popisuje trend a sezónní cyklus, ale predikčně je nevhodný. ARIMAX model přidává smysluplně externí informace, ale na holdout datech je méně přesný než čistý SARIMA (pravděpodobně kvůli variabilitě externích proměnných). \## Grafické srovnání — historická data + predikce (pro přehled h_plot = 52)
+- RMSE a MAPE jsou obrovské (řádově stovky milionů, MAPE přes 370 %).
+- Trend + sinusy nestačí zachytit prudké výkyvy a velkou variabilitu COVID-19 dat.
+- Funguje spíše jako popisný model než predikční.
+
+SARIMA model
+
+- RMSE ≈ 2,38 milionu, MAPE ≈ 3,3 %.
+- Skvěle zachycuje krátkodobou dynamiku, stabilní predikce.
+- I přes jednoduchou ARIMA(1,0,1) bez externích proměnných je to nejlepší prediktor na holdout datech.
+
+ARIMAX model
+
+- RMSE a MAPE vyšší než SARIMA, ale výrazně lepší než čistě funkční model.
+- Přidání lagovaných externích proměnných nevedlo k lepšímu hodnocení na holdout, pravděpodobně kvůli nestabilním nebo šumovým vstupům.
+- V některých případech (delší horizont predikce) může být ARIMAX užitečný, pokud se externí proměnné vyvíjejí stabilně.
+
+Pro krátkodobou predikci (10 měsíců) je SARIMA model jasně nejlepší. Funkční model je interpretovatelný a dobře popisuje trend a sezónní cyklus, ale predikčně je nevhodný. ARIMAX model přidává smysluplně externí informace, ale na holdout datech je méně přesný než čistý SARIMA (pravděpodobně kvůli variabilitě externích proměnných). 
+
+## Grafické srovnání — historická data + predikce (pro přehled h_plot = 52)
 
 ```{r}
 # Historická hodnoty (posledních last_n_obs měsíců)
