@@ -6,8 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="author" content="Patrik Poklop, Tomáš Ladislav Kotek">
 
-<title>coviddata2</title>
+<title>Analýza covid dat</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -79,46 +80,71 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <main class="content" id="quarto-document-content">
 
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Analýza covid dat</h1>
+</div>
 
 
 
-<hr>
-<p>title: “Analýza covid dat”</p>
-<p>author: “Patrik Poklop, Tomáš Ladislav Kotek”</p>
-<p>format: html</p>
-<p>editor: visual</p>
-<hr>
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Patrik Poklop, Tomáš Ladislav Kotek </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
 
 <style>
-
 #quarto-content {
-
   display: flex;
-
   align-content: center;
-
 }
-
 main {
-
   max-width: 1000px;
-
   margin-left: auto;
-
   margin-right: auto;
-
 }
-
 </style>
-<section id="analýza-covid-dat-na-časové-řady-opravena" class="level1">
-<h1>Analýza covid dat na časové řady (opravena)</h1>
+<section id="analýza-covid-dat-na-časové-řady" class="level1">
+<h1>Analýza covid dat na časové řady</h1>
 <p>Tato verze dokumentu opravuje a sjednocuje práci s frekvencemi (měsíčně vs.&nbsp;týdně), zavádí stabilizaci rozptylu (Box‑Cox), dělá out‑of‑sample validaci (posledních 10 měsíců) a zároveň pro účely vizualizace zachovává širší grafický horizon (52). Dále řeší zacházení s nulovými denními záznamy (ořeže pouze vedoucí a koncové nuly, nikoli vnitřní) a doplňuje výpis koeficientů a VIF pro ARIMAX.</p>
+<section id="úvod" class="level2">
+<h2 class="anchored" data-anchor-id="úvod">Úvod</h2>
+<p>V této analýze se zaměřujem na hledání optimálního modelu pro časovou řadu COVID-19 dat od 5.1.2020 do 8.4.2024. Cílem je otestovat různé přístupy k modelování časových řad a najít ten, který nejlépe popisuje data a poskytuje nejpřesnější predikce.</p>
+<p>Analýza postupu je systematicky přes několik kroků:</p>
+<ul>
+<li><p>Explorativní analýza - grafické zobrazení a identifikace základních charakteristik:</p></li>
+<li><p>Dekompozice - rozdělení řady na trend, sezónní a náhodnou složku</p></li>
+<li><p>Funkční modelování - hledání matematické funkce popisující trend a sezónnost</p></li>
+<li><p>SARIMA modelování - autoregresní přístup zachycující časovou závislost</p></li>
+<li><p>Multivariátní modelování - zahrnutí vlivu ostatních proměnných</p></li>
+<li><p>Srovnání a validace - výběr nejlepšího modelu na základě kritérií</p></li>
+</ul>
+<p>Jako hlavní řadu jsme zvolili new_cases(nové případy COVID-19), protože:</p>
+<ul>
+<li><p>Má výrazný dlouhodobý trend (růst během pandemie).</p></li>
+<li><p>Vykazuje sezónní chování (vyšší hodnoty v zimních měsících).</p></li>
+<li><p>Je klíčovou metrikou pro epidemiologické sledování.</p></li>
+<li><p>Má dostupná kvalitní data bez příliš mnoha chybějících hodnot.</p></li>
+</ul>
 <hr>
+</section>
 <section id="načtení-dat-a-základní-čištění" class="level2">
 <h2 class="anchored" data-anchor-id="načtení-dat-a-základní-čištění">Načtení dat a základní čištění</h2>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Načtení dat</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>raw <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"H:</span><span class="sc">\\</span><span class="st">Data</span><span class="sc">\\</span><span class="st">School</span><span class="sc">\\</span><span class="st">CAS_covid_data</span><span class="sc">\\</span><span class="st">covid_timeseries.csv"</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>raw <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"covid_timeseries.csv"</span>)</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>original_rows <span class="ot">&lt;-</span> <span class="fu">nrow</span>(raw)</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>data <span class="ot">&lt;-</span> raw[<span class="sc">!</span><span class="fu">is.na</span>(raw<span class="sc">$</span>new_cases), ]</span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">Odstraněno"</span>, original_rows <span class="sc">-</span> <span class="fu">nrow</span>(raw), <span class="st">"řádků s chybějícími hodnotami v new_cases</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -196,9 +222,7 @@ Odstraněno 0 řádků s chybějícími hodnotami v new_cases</code></pre>
 <pre><code>Počet týdenních pozorování: 241 (pouze pro grafy)</code></pre>
 </div>
 </div>
-</section>
-<section id="vytvoření-časové-řady-měsíčně-sjednoceno-na-frequency-12" class="level2">
-<h2 class="anchored" data-anchor-id="vytvoření-časové-řady-měsíčně-sjednoceno-na-frequency-12">Vytvoření časové řady (měsíčně) — sjednoceno na frequency = 12</h2>
+<p>Odstranili jsme řádky, kde je <code>new_cases = NA</code>. Odstraníme nuly ze začátku a konce řady. ## Vytvoření časové řady (měsíčně)</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>start_year <span class="ot">&lt;-</span> <span class="fu">min</span>(monthly_data<span class="sc">$</span>year)</span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>start_month <span class="ot">&lt;-</span> <span class="fu">min</span>(monthly_data<span class="sc">$</span>month[monthly_data<span class="sc">$</span>year <span class="sc">==</span> start_year])</span>
@@ -214,8 +238,8 @@ Odstraněno 0 řádků s chybějícími hodnotami v new_cases</code></pre>
 </div>
 </div>
 </section>
-<section id="stabilizace-rozptylu-boxcox-pokud-vhodné" class="level2">
-<h2 class="anchored" data-anchor-id="stabilizace-rozptylu-boxcox-pokud-vhodné">Stabilizace rozptylu — Box‑Cox (pokud vhodné)</h2>
+<section id="stabilizace-rozptylu---boxcox" class="level2">
+<h2 class="anchored" data-anchor-id="stabilizace-rozptylu---boxcox">Stabilizace rozptylu - Box‑Cox</h2>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Box-Cox lambda a transformace</span></span>
 <span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>lambda <span class="ot">&lt;-</span> <span class="fu">BoxCox.lambda</span>(ts_data, <span class="at">lower =</span> <span class="dv">0</span>)</span>
@@ -243,9 +267,7 @@ Odstraněno 0 řádků s chybějícími hodnotami v new_cases</code></pre>
 </div>
 </div>
 </div>
-</section>
-<section id="holdout-out-of-sample-posledních-h_eval-10-měsíců" class="level2">
-<h2 class="anchored" data-anchor-id="holdout-out-of-sample-posledních-h_eval-10-měsíců">Holdout (out-of-sample) — posledních h_eval = 10 měsíců</h2>
+<p>Optimální transformace je <strong>logaritmus</strong> (<code>Box-Cox lambda: 0</code>). ## Holdout (out-of-sample)</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="fu">length</span>(ts_bc)</span>
 <span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span>(n <span class="sc">&lt;=</span> h_eval) <span class="fu">stop</span>(<span class="st">"Řada je příliš krátká pro zvolený holdout"</span>)</span>
@@ -258,9 +280,7 @@ Odstraněno 0 řádků s chybějícími hodnotami v new_cases</code></pre>
 <pre><code>Délka tréninku: 46 ; délka testu: 10 </code></pre>
 </div>
 </div>
-</section>
-<section id="sarima-na-transformovaných-datech-seasonal-12" class="level2">
-<h2 class="anchored" data-anchor-id="sarima-na-transformovaných-datech-seasonal-12">SARIMA (na transformovaných datech; seasonal = 12)</h2>
+<p>Rozdělujeme data na trénink (46 měsíců) a test (10 měsíců). Predicki budeme dělat na out-of-sample datech. ## SARIMA (na transformovaných datech; seasonal = 12)</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>auto_sarima <span class="ot">&lt;-</span> <span class="fu">auto.arima</span>(train_bc, <span class="at">seasonal =</span> <span class="cn">TRUE</span>, <span class="at">stepwise =</span> <span class="cn">FALSE</span>, <span class="at">approximation =</span> <span class="cn">FALSE</span>, <span class="at">lambda =</span> <span class="cn">NULL</span>)</span>
 <span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(auto_sarima)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -306,9 +326,17 @@ Q* = 5.3013, df = 7, p-value = 0.6232
 Model df: 2.   Total lags used: 9</code></pre>
 </div>
 </div>
+<p>Používáme auto.arima() s vypnutým stepwise a approximation, což znamená, že funkce prohledá větší množství modelů (lepší šance najít optimální).</p>
+<p><code>lambda = NULL</code>: data už jsou transformovaná Box-Coxem, takže žádná další transformace se nedělá.</p>
+<p><code>seasonal = TRUE</code>: povoluje sezónní složky.</p>
+<p><strong>AR(1) složka</strong>: silná autoregrese (φ = 0.95 - hodně závisí na minulém měsíci).</p>
+<p><strong>MA(1) složka</strong>: korekce šumu s vahou = 0.49.</p>
+<p><strong>Žádná diferenciace (d=0)</strong>: řada je stacionární po log transformaci.</p>
+<p><strong>Žádná sezónní složka</strong>: auto.arima nenašla silnou sezónnost (zajímavé, ale může odpovídat tomu, že v pandemických datech nebyla pravidelná roční periodicita).</p>
+<p>Predikujeme 52 měsíců dopředu pro graf (dlouhý horizont - hezky se ukáže budoucí chování). Ale pro vyhodnocení používáme jen prvních 10 měsíců - přesně odpovídá zadání.</p>
 </section>
-<section id="funkční-model-regrese-s-trigonometrickými-členy-budeme-ho-trénovat-na-měsíčních-datech-nezapomenout-na-transformaci-při-porovnání" class="level2">
-<h2 class="anchored" data-anchor-id="funkční-model-regrese-s-trigonometrickými-členy-budeme-ho-trénovat-na-měsíčních-datech-nezapomenout-na-transformaci-při-porovnání">Funkční model (regrese s trigonometrickými členy) — budeme ho trénovat na MĚSÍČNÍCH datech (nezapomenout na transformaci při porovnání)</h2>
+<section id="funkční-model-regrese-s-trigonometrickými-členy" class="level2">
+<h2 class="anchored" data-anchor-id="funkční-model-regrese-s-trigonometrickými-členy">Funkční model (regrese s trigonometrickými členy)</h2>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Postavíme funkční model na původních (netransformovaných) datech, protože jde o interpretovatelnou regresi</span></span>
 <span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>monthly_df <span class="ot">&lt;-</span> monthly_data <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">t =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">n</span>())</span>
@@ -354,6 +382,14 @@ F-statistic:  8.54 on 4 and 41 DF,  p-value: 4.148e-05</code></pre>
 <span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Pro vyhodnocení použijeme prvních h_eval z predikcí</span></span>
 <span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a>pred_func_eval <span class="ot">&lt;-</span> pred_func[<span class="dv">1</span><span class="sc">:</span>h_eval, <span class="st">"fit"</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>Na základě zvolených měsíčních agregovaných dat jsme sestavili regresní model s kvadratickým trendem a harmonickými sezónními členy (sinus a kosinus s periodou 12 měsíců). Model popisuje vývoj počtu nově hlášených případů COVID-19 v čase a současně zachycuje sezónní opakování (zpravidla zimní a podzimní vlny epidemie).</p>
+<p>Výsledky ukazují:</p>
+<ul>
+<li><p>Kvadratický trend je statisticky významný (p &lt; 0.001 pro kvadratický člen), což znamená, že dlouhodobý vývoj nelze vysvětlit pouze lineárním nárůstem nebo poklesem – v datech se střídají období prudkého růstu a poklesu.</p></li>
+<li><p>Sezónní složka má význam zejména v kosinové části (p ≈ 0.014), což potvrzuje, že existuje pravidelný roční cyklus, typicky s vrcholem v zimních měsících a útlumem v létě.</p></li>
+<li><p>Hodnota adjustovaného R² ≈ 0.40 znamená, že model vysvětluje přibližně 40 % variability počtu případů. Pro epidemiologická data je to poměrně dobrý výsledek, protože počty případů jsou ovlivněny i řadou vnějších faktorů (např. změny testovací strategie, vládní opatření, varianta viru).</p></li>
+<li><p>Rezidua modelu jsou náhodně rozptýlena kolem nuly (potvrzeno diagnostickými grafy – ACF/PACF reziduí), což naznačuje, že model dostatečně zachytil základní trend i sezónnost a neobsahuje výrazné systematické chyby.</p></li>
+</ul>
 </section>
 <section id="arimax-výběr-lagů-z-ccf-tabulka-koeficientů-a-vif" class="level2">
 <h2 class="anchored" data-anchor-id="arimax-výběr-lagů-z-ccf-tabulka-koeficientů-a-vif">ARIMAX (výběr lagů z CCF + tabulka koeficientů a VIF)</h2>
@@ -510,6 +546,19 @@ Training set 3285269 57902685 34019135 -66.64976 112.2985 0.4721238 0.01235234</
 <span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a>fc_arimax <span class="ot">&lt;-</span> <span class="fu">forecast</span>(arimax_model, <span class="at">xreg =</span> future_xreg, <span class="at">h =</span> h_plot)</span>
 <span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a>fc_arimax_eval <span class="ot">&lt;-</span> fc_arimax<span class="sc">$</span>mean[<span class="dv">1</span><span class="sc">:</span>h_eval]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>Funkce ccf_candidates() hledá, které lagy mají statisticky významnou korelaci s hlavní řadou (new_cases).</p>
+<p>Výstupy ukazují, že například:</p>
+<ul>
+<li>new_deaths: nejsilnější negativní korelace v lags -6 až -2 (pravděpodobně opožděný efekt úmrtí).</li>
+<li>hosp_patients: pozitivní korelace kolem lag 0. - stringency_index: slabší, ale lag 1 může být relevantní.</li>
+<li>reproduction_rate: jen slabá korelace lag 0. Proměnné s významným lagem se zahrnují jako lagované regresory do ARIMAX modelu.</li>
+</ul>
+<p>Lagy odpovídají výsledkům CCF:</p>
+<ul>
+<li>deaths_lag1: počet úmrtí z minulého měsíce</li>
+<li>hosp_lag0: současný počet hospitalizovaných</li>
+<li>stringency_lag1: index opatření z minulého měsíce</li>
+</ul>
 </section>
 <section id="vyhodnocení-modelů-na-holdout-prvních-h_eval-predikcí" class="level2">
 <h2 class="anchored" data-anchor-id="vyhodnocení-modelů-na-holdout-prvních-h_eval-predikcí">Vyhodnocení modelů na holdout (prvních h_eval predikcí)</h2>
@@ -546,6 +595,25 @@ Training set 3285269 57902685 34019135 -66.64976 112.2985 0.4721238 0.01235234</
 3  ARIMAX 107199948 105857243 122.914832</code></pre>
 </div>
 </div>
+<p>Funkční model:</p>
+<ul>
+<li>RMSE a MAPE jsou obrovské (řádově stovky milionů, MAPE přes 370 %).</li>
+<li>Trend + sinusy nestačí zachytit prudké výkyvy a velkou variabilitu COVID-19 dat.</li>
+<li>Funguje spíše jako popisný model než predikční.</li>
+</ul>
+<p>SARIMA model</p>
+<ul>
+<li>RMSE ≈ 2,38 milionu, MAPE ≈ 3,3 %.</li>
+<li>Skvěle zachycuje krátkodobou dynamiku, stabilní predikce.</li>
+<li>I přes jednoduchou ARIMA(1,0,1) bez externích proměnných je to nejlepší prediktor na holdout datech.</li>
+</ul>
+<p>ARIMAX model</p>
+<ul>
+<li>RMSE a MAPE vyšší než SARIMA, ale výrazně lepší než čistě funkční model.</li>
+<li>Přidání lagovaných externích proměnných nevedlo k lepšímu hodnocení na holdout, pravděpodobně kvůli nestabilním nebo šumovým vstupům.</li>
+<li>V některých případech (delší horizont predikce) může být ARIMAX užitečný, pokud se externí proměnné vyvíjejí stabilně.</li>
+</ul>
+<p>Pro krátkodobou predikci (10 měsíců) je SARIMA model jasně nejlepší. Funkční model je interpretovatelný a dobře popisuje trend a sezónní cyklus, ale predikčně je nevhodný. ARIMAX model přidává smysluplně externí informace, ale na holdout datech je méně přesný než čistý SARIMA (pravděpodobně kvůli variabilitě externích proměnných).</p>
 </section>
 <section id="grafické-srovnání-historická-data-predikce-pro-přehled-h_plot-52" class="level2">
 <h2 class="anchored" data-anchor-id="grafické-srovnání-historická-data-predikce-pro-přehled-h_plot-52">Grafické srovnání — historická data + predikce (pro přehled h_plot = 52)</h2>
@@ -629,6 +697,74 @@ Krátké shrnutí:</code></pre>
 - Oříznuli jsme pouze vedoucí a koncové nuly, protože interní nuly mají informativní hodnotu pro epidemická data.</code></pre>
 </div>
 </div>
+</section>
+<section id="závěr" class="level2">
+<h2 class="anchored" data-anchor-id="závěr">Závěr</h2>
+<p>V této semestrální práci jsme analyzovali časovou řadu <strong>měsíčních nových případů COVID‑19</strong> a hledali optimální modely pro krátkodobou predikci. Postupovali jsme podle zadání:</p>
+<section id="příprava-dat-a-vizualizace" class="level3">
+<h3 class="anchored" data-anchor-id="příprava-dat-a-vizualizace">Příprava dat a vizualizace</h3>
+<ul>
+<li>Data byla agregována na měsíční úroveň a oříznuta počáteční a koncová nula.<br>
+</li>
+<li>Interní nuly zůstaly, aby reflektovaly skutečný epidemiologický vývoj.<br>
+</li>
+<li>Box‑Cox transformace ukázala, že logaritmická transformace (lambda = 0) stabilizuje rozptyl.</li>
+</ul>
+</section>
+<section id="trend-a-sezónnost" class="level3">
+<h3 class="anchored" data-anchor-id="trend-a-sezónnost">Trend a sezónnost</h3>
+<ul>
+<li>Funkční model s kvadratickým trendem a trigonometrickými členy zachytil sezónní cyklus i dlouhodobý trend.<br>
+</li>
+<li>Model je dobře interpretovatelný, ale predikčně nedostačující pro prudké výkyvy.</li>
+</ul>
+</section>
+<section id="sarima-model" class="level3">
+<h3 class="anchored" data-anchor-id="sarima-model">SARIMA model</h3>
+<ul>
+<li>Automatické vyhledání parametrů ARIMA s měsíční sezónností.<br>
+</li>
+<li>Diagnostika reziduí potvrzuje nezávislost autokorelace.<br>
+</li>
+<li>Predikce na posledních 10 měsíců holdoutu vykázala <strong>nejnižší RMSE, MAE i MAPE</strong> → <strong>nejlepší krátkodobý prediktor</strong>.</li>
+</ul>
+</section>
+<section id="arimax-model-s-externími-proměnnými" class="level3">
+<h3 class="anchored" data-anchor-id="arimax-model-s-externími-proměnnými">ARIMAX model s externími proměnnými</h3>
+<ul>
+<li>CCF analýza odhalila významné lagy externích proměnných (<code>new_deaths</code>, <code>hosp_patients</code>, <code>stringency_index</code>).<br>
+</li>
+<li>Lagované proměnné zahrnuty do ARIMAX modelu s AR(1) složkou.<br>
+</li>
+<li>Model je stabilní (VIF &lt; 5), ale predikčně méně přesný než čistá SARIMA na holdoutu.<br>
+</li>
+<li>Může být vhodný pro scénáře, kde se očekává stabilní vývoj externích faktorů.</li>
+</ul>
+</section>
+<section id="porovnání-modelů" class="level3">
+<h3 class="anchored" data-anchor-id="porovnání-modelů">Porovnání modelů</h3>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>    Model      RMSE       MAE   MAPE
+1 Funkční 251259208 241698225 372.91
+2  SARIMA   2376998   2208515   3.28
+3  ARIMAX 107199948 105857243 122.91</code></pre>
+</div>
+</div>
+<ul>
+<li>SARIMA model je jednoznačně nejpřesnější.</li>
+<li>Funkční model slouží spíše pro interpretaci trendu a sezónnosti.</li>
+<li>ARIMAX model je doplňkový, vhodný tam, kde jsou k dispozici spolehlivé externí informace.</li>
+</ul>
+</section>
+<section id="vizualizace-predikcí" class="level3">
+<h3 class="anchored" data-anchor-id="vizualizace-predikcí">Vizualizace predikcí</h3>
+<ul>
+<li>Graf porovnává skutečné hodnoty a predikce všech tří modelů.</li>
+<li>Přerušovaná čára značí hranici tréninku vs.&nbsp;holdout.</li>
+<li>Jasně demonstruje, že SARIMA sleduje dynamiku dat nejvěrněji.</li>
+</ul>
+</section>
 </section>
 </section>
 
