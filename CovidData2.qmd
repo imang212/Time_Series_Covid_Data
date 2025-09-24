@@ -1,0 +1,367 @@
+------------------------------------------------------------------------
+
+title: "Analýza covid dat "
+
+author: "Patrik Poklop, Tomáš Ladislav Kotek"
+
+format: html
+
+editor: visual
+
+------------------------------------------------------------------------
+
+```{=html}
+
+<style>
+
+#quarto-content {
+
+  display: flex;
+
+  align-content: center;
+
+}
+
+main {
+
+  max-width: 1000px;
+
+  margin-left: auto;
+
+  margin-right: auto;
+
+}
+
+</style>
+```
+
+# Analýza covid dat na časové řady (opravena)
+
+Tato verze dokumentu opravuje a sjednocuje práci s frekvencemi (měsíčně vs. týdně), zavádí stabilizaci rozptylu (Box‑Cox), dělá out‑of‑sample validaci (posledních 10 měsíců) a zároveň pro účely vizualizace zachovává širší grafický horizon (52). Dále řeší zacházení s nulovými denními záznamy (ořeže pouze vedoucí a koncové nuly, nikoli vnitřní) a doplňuje výpis koeficientů a VIF pro ARIMAX.
+
+------------------------------------------------------------------------
+
+```{r echo=FALSE, include=FALSE}
+# Potřebné balíčky
+library(tidyverse)
+library(lubridate)
+library(forecast)
+library(tseries)
+library(stats)
+library(gridExtra)
+library(TTR)
+library(car) # pro VIF
+library(Metrics)
+Sys.setlocale("LC_TIME", "C")
+set.seed(123)
+# Volitelné parametry analýzy
+frequency_monthly <- 12      # měsíční frekvence
+frequency_weekly  <- 52      # týdenní frekvence (pouze pro doplňkové grafy)
+h_eval <- 10                 # povinné hodnocení podle zadání (posledních 10 měsíců)
+h_plot <- 52                 # horizont pro grafickou viditelnost (volitelné)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width = 12, fig.height = 5)
+```
+
+## Načtení dat a základní čištění
+
+```{r}
+# Načtení dat
+raw <- read.csv("H:\\Data\\School\\CAS_covid_data\\covid_timeseries.csv")
+original_rows <- nrow(raw)
+data <- raw[!is.na(raw$new_cases), ]
+cat("\nOdstraněno", original_rows - nrow(raw), "řádků s chybějícími hodnotami v new_cases\n")
+raw$date <- as.Date(raw$date)
+# Základní přehled
+cat("Rozsah dat:", min(raw$date), "—", max(raw$date), "\n")
+# FUNKCE: oříznout počáteční a koncové řádky s nulami (ponechat vnitřní nuly)
+trim_leading_trailing_zeros <- function(x) {
+  if(all(is.na(x) | x == 0)) return(rep(NA, length(x)))
+  nz <- which(!(is.na(x) | x == 0))
+  if(length(nz) == 0) return(rep(NA, length(x)))
+  start <- min(nz)
+  end <- max(nz)
+  x_trim <- x
+  x_trim[1:(start-1)] <- NA
+  x_trim[(end+1):length(x_trim)] <- NA
+  return(x_trim)
+}
+# Aplikujeme trim na new_cases (ponecháme ostatní sloupce beze změny)
+raw$new_cases_trim <- trim_leading_trailing_zeros(raw$new_cases)
+# Počet původních řádků a jak mnoho nul jsme ořízli
+cat("Původní počet řádků:", nrow(raw), "\n")
+cat("Počet NA v new_cases před ořezem:", sum(is.na(raw$new_cases)), "\n")
+cat("Počet NA v new_cases po ořezu:", sum(is.na(raw$new_cases_trim)), "\n")
+# Aggregace na měsíční úroveň (měsíční řada je primární pro tuto práci)
+raw$year <- year(raw$date)
+raw$month <- month(raw$date)
+monthly_data <- raw %>%
+  mutate(new_cases_for_aggr = if_else(is.na(new_cases_trim), 0, new_cases_trim)) %>%
+  group_by(year, month) %>%
+  summarise(
+    date = max(date),
+    new_cases = sum(new_cases_for_aggr, na.rm = TRUE),
+    new_deaths = sum(if_else(is.na(new_deaths), 0, new_deaths), na.rm = TRUE),
+    stringency_index = mean(stringency_index, na.rm = TRUE),
+    hosp_patients = mean(hosp_patients, na.rm = TRUE),
+    reproduction_rate = mean(reproduction_rate, na.rm = TRUE),
+    .groups = 'drop'
+  ) %>%
+  arrange(year, month)
+cat("Počet měsíčních pozorování:", nrow(monthly_data), "\n")
+cat("Rozsah měsíčních agregátů:", range(monthly_data$date), "\n")
+# Uděláme i týdenní agregaci pro doplňkové grafy (nezapomeň: primární modelování = MONTHLY)
+raw$week <- as.numeric(format(raw$date, "%U"))
+raw$year_week <- paste(raw$year, sprintf("%02d", raw$week), sep = "-W")
+weekly_data <- raw %>%
+  group_by(year, week) %>%
+  summarise(date = max(date), new_cases = sum(if_else(is.na(new_cases), 0, new_cases), na.rm = TRUE), .groups = 'drop') %>%
+  arrange(year, week) %>%
+  filter(week > 0)
+cat("Počet týdenních pozorování:", nrow(weekly_data), "(pouze pro grafy)\n")
+```
+
+## Vytvoření časové řady (měsíčně) — sjednoceno na frequency = 12
+
+```{r}
+start_year <- min(monthly_data$year)
+start_month <- min(monthly_data$month[monthly_data$year == start_year])
+ts_data <- ts(monthly_data$new_cases, start = c(start_year, start_month), frequency = frequency_monthly)
+cat("TS: start =", paste(start(ts_data), collapse = ", "), ", frequency =", frequency(ts_data), "\n")
+summary(ts_data)
+```
+
+## Stabilizace rozptylu — Box‑Cox (pokud vhodné)
+
+```{r}
+# Box-Cox lambda a transformace
+lambda <- BoxCox.lambda(ts_data, lower = 0)
+cat("Box-Cox lambda:", round(lambda, 4), "\n")
+# Pokud lambda je blízko 1, transformace nemusí být nutná; i tak ji nabízíme
+ts_bc <- BoxCox(ts_data, lambda)
+# Pro porovnání: modely budeme fitovat na transformovaných datech a potom inverzně převádět predikce
+plot(ts_data, main = "Originalní měsíční data (new_cases)")
+plot(ts_bc, main = paste0("BoxCox transformace (lambda=", round(lambda,3), ")"))
+```
+
+## Holdout (out-of-sample) — posledních h_eval = 10 měsíců
+
+```{r}
+n <- length(ts_bc)
+if(n <= h_eval) stop("Řada je příliš krátká pro zvolený holdout")
+train_bc <- head(ts_bc, n - h_eval)
+test_bc  <- tail(ts_bc, h_eval)
+train_orig <- head(ts_data, n - h_eval)
+test_orig  <- tail(ts_data, h_eval)
+cat("Délka tréninku:", length(train_bc), "; délka testu:", length(test_bc), "\n")
+```
+
+## SARIMA (na transformovaných datech; seasonal = 12)
+
+```{r}
+auto_sarima <- auto.arima(train_bc, seasonal = TRUE, stepwise = FALSE, approximation = FALSE, lambda = NULL)
+summary(auto_sarima)
+# Predikce (na h_plot pro graf, ale budeme hodnotit prvních h_eval pozorování)
+fc_sarima_bc <- forecast(auto_sarima, h = h_plot)
+fc_sarima <- InvBoxCox(fc_sarima_bc$mean, lambda)
+# Převod pro první h_eval pro vyhodnocení
+fc_sarima_eval <- InvBoxCox(fc_sarima_bc$mean[1:h_eval], lambda)
+# Diagnostika residuí na tréninku
+checkresiduals(auto_sarima)
+```
+
+## Funkční model (regrese s trigonometrickými členy) — budeme ho trénovat na MĚSÍČNÍCH datech (nezapomenout na transformaci při porovnání)
+
+```{r}
+# Postavíme funkční model na původních (netransformovaných) datech, protože jde o interpretovatelnou regresi
+monthly_df <- monthly_data %>% mutate(t = 1:n())
+monthly_df <- monthly_df %>% mutate(
+  sin_12 = sin(2 * pi * t / 12), cos_12 = cos(2 * pi * t / 12),
+  sin_6 = sin(2 * pi * t / 6), cos_6 = cos(2 * pi * t / 6)
+)
+# Trénink / test split podle indexů
+train_idx <- 1:(nrow(monthly_df) - h_eval)
+train_df <- monthly_df[train_idx, ]
+test_df  <- monthly_df[-train_idx, ]
+best_func_model <- lm(new_cases ~ poly(t,2) + sin_12 + cos_12, data = train_df)
+summary(best_func_model)
+# Predikce pro h_plot (vytvoříme future dataframe)
+future_t <- (nrow(monthly_df)+1):(nrow(monthly_df)+h_plot)
+future_df <- data.frame(t = future_t,
+                        sin_12 = sin(2 * pi * future_t / 12),
+                        cos_12 = cos(2 * pi * future_t / 12))
+pred_func <- predict(best_func_model, newdata = future_df, interval = "prediction")
+# Pro vyhodnocení použijeme prvních h_eval z predikcí
+pred_func_eval <- pred_func[1:h_eval, "fit"]
+```
+
+## ARIMAX (výběr lagů z CCF + tabulka koeficientů a VIF)
+
+```{r}
+# Připravíme externí proměnné z monthly_data, vyhladíme / interpolujeme chybějící hodnoty
+ext_df <- monthly_data %>%
+  select(date, new_deaths, stringency_index, hosp_patients, reproduction_rate) %>%
+  mutate(across(-date, ~ zoo::na.approx(., na.rm = FALSE)))
+
+# Rozdělení na trénink / test
+ext_train <- ext_df[train_idx, ]
+ext_test  <- ext_df[-train_idx, ]
+
+# Funkce pro CCF analýzu s odfiltrováním NA a výběrem významných lagů
+ccf_candidates <- function(x, y, maxlag = 6) {
+  # odstraníme NA současně z obou řad
+  idx <- complete.cases(x, y)
+  x <- x[idx]; y <- y[idx]
+
+  ccf_res <- ccf(x, y, lag.max = maxlag, plot = FALSE)
+  acf_vals <- as.numeric(ccf_res$acf)
+  lags <- as.numeric(ccf_res$lag)
+
+  n <- length(x)
+  ci <- 1.96 / sqrt(n)   # 95% CI hranice
+  sel <- which(abs(acf_vals) > ci)
+
+  if (length(sel) == 0) {
+    return(data.frame(lag = integer(0), corr = numeric(0)))
+  }
+  data.frame(lag = lags[sel], corr = acf_vals[sel])
+}
+
+# --- Výpis návrhů lagů ---
+cat("CCF návrhy (y = new_cases, x = candidate):\n")
+for (col in c("new_deaths", "stringency_index", "hosp_patients", "reproduction_rate")) {
+  cat("\nProměnná:", col, "\n")
+  print(ccf_candidates(train_df$new_cases, ext_train[[col]], maxlag = 6))
+}
+
+# --- Konstrukce lagovaných proměnných na základě výstupů z CCF ---
+xreg_train <- data.frame(
+  deaths_lag1 = dplyr::lag(ext_train$new_deaths, 1),
+  hosp_lag0   = ext_train$hosp_patients,
+  stringency_lag1 = dplyr::lag(ext_train$stringency_index, 1)
+)
+
+# Zajistíme konzistentní indexy bez NA
+keep <- complete.cases(xreg_train, train_df$new_cases)
+fit_y <- train_df$new_cases[keep]
+xreg_train_clean <- xreg_train[keep, , drop = FALSE]
+
+# --- Fit ARIMAX modelu ---
+# 1) zkontroluj třídy sloupců a přítomnost NA/Inf
+print(sapply(xreg_train_clean, class))
+print(colSums(is.na(xreg_train_clean)))        # kolik NA v každém sloupci
+print(any(!is.finite(as.matrix(xreg_train_clean))))  # TRUE pokud jsou Inf/NaN
+
+## 2) bezpečně převést na numerickou matici
+## Pokud sloupce jsou faktory/char, převede se přes as.character -> as.numeric
+xreg_train_mat <- as.matrix(
+  data.frame(lapply(xreg_train_clean, function(col) as.numeric(as.character(col))),
+             check.names = FALSE)
+)
+
+## 3) zkontroluj, že matice nemá NA/Inf a že má stejný počet řádků jako fit_y
+if (any(is.na(xreg_train_mat)) || any(!is.finite(xreg_train_mat))) {
+  stop("xreg obsahuje NA nebo Inf -- odstraň je nebo uprav lagování.")
+}
+stopifnot(nrow(xreg_train_mat) == length(fit_y))
+
+## 4) použij auto.arima s numerickou maticí
+arimax_model <- auto.arima(
+  ts(fit_y, frequency = frequency_monthly),
+  xreg = xreg_train_mat,
+  seasonal = TRUE,
+  stepwise = FALSE,
+  approximation = FALSE
+)
+summary(arimax_model)
+
+## 5) pro predikci také vytvoř numerickou future matici
+last_xreg <- tail(xreg_train_mat, 1)
+future_xreg <- matrix(rep(as.numeric(last_xreg), h_plot), nrow = h_plot, byrow = TRUE)
+colnames(future_xreg) <- colnames(xreg_train_mat)
+
+fc_arimax <- forecast(arimax_model, xreg = future_xreg, h = h_plot)
+
+# --- Diagnostika multikolinearity ---
+lm_for_vif <- lm(fit_y ~ ., data = xreg_train_clean)
+print(car::vif(lm_for_vif))
+
+# --- Predikce ARIMAX ---
+last_xreg <- tail(xreg_train_clean, 1)
+future_xreg <- matrix(rep(as.numeric(last_xreg), h_plot), nrow = h_plot, byrow = TRUE)
+colnames(future_xreg) <- colnames(xreg_train_clean)
+
+fc_arimax <- forecast(arimax_model, xreg = future_xreg, h = h_plot)
+fc_arimax_eval <- fc_arimax$mean[1:h_eval]
+```
+
+## Vyhodnocení modelů na holdout (prvních h_eval predikcí)
+
+```{r}
+# Invert transformace SARIMA predikcí (již invertované výše)
+sarima_pred_eval <- fc_sarima_eval
+func_pred_eval <- pred_func_eval
+arimax_pred_eval <- fc_arimax_eval
+# Skóre na původních (netransformovaných) datech
+true_eval <- as.numeric(test_orig)
+scores <- data.frame(
+  Model = c("Funkční","SARIMA","ARIMAX"),
+  RMSE = c(
+    rmse(true_eval, func_pred_eval),
+    rmse(true_eval, sarima_pred_eval),
+    rmse(true_eval, arimax_pred_eval)
+  ),
+  MAE = c(
+    mae(true_eval, func_pred_eval),
+    mae(true_eval, sarima_pred_eval),
+    mae(true_eval, arimax_pred_eval)
+  ),
+  MAPE = c(
+    mape(true_eval, func_pred_eval),
+    mape(true_eval, sarima_pred_eval),
+    mape(true_eval, arimax_pred_eval)
+  )
+)
+print(scores)
+```
+
+## Grafické srovnání — historická data + predikce (pro přehled h_plot = 52)
+
+```{r}
+# Historická hodnoty (posledních last_n_obs měsíců)
+last_n_obs <- min(nrow(monthly_data), 36)
+hist_dates <- tail(monthly_data$date, last_n_obs)
+hist_values <- tail(monthly_data$new_cases, last_n_obs)
+future_dates_plot <- seq(max(monthly_data$date) + months(1), by = "month", length.out = h_plot)
+plot_df <- tibble(
+  date = c(hist_dates, future_dates_plot),
+  actual = c(hist_values, rep(NA, h_plot)),
+  func = c(rep(NA, last_n_obs), pred_func[,"fit"]),
+  sarima = c(rep(NA, last_n_obs), as.numeric(fc_sarima)),
+  arimax = c(rep(NA, last_n_obs), as.numeric(fc_arimax$mean))
+)
+p <- ggplot(plot_df, aes(x = date)) +
+  geom_line(aes(y = actual), color = "black", size = 1) +
+  geom_line(aes(y = func), color = "red", size = 1) +
+  geom_line(aes(y = sarima), color = "blue", size = 1) +
+  geom_line(aes(y = arimax), color = "green", size = 1) +
+  geom_vline(xintercept = max(hist_dates), linetype = "dashed") +
+  labs(title = "Predikce měsíčních nových případů — srovnání modelů",
+       subtitle = paste0("Historie (černě), Funkční (červeně), SARIMA (modře), ARIMAX (zeleně). Graf zobrazuje ", h_plot, " měsíců predikce; pro hodnocení použito posledních ", h_eval, " měsíců."),
+       x = "Datum", y = "Počet případů (měsíčně)") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+print(p)
+```
+
+## Výpis koeficientů ARIMAX a závěry
+
+```{r}
+cat("Koeficienty ARIMAX modelu:\n")
+print(coef(summary(arimax_model)))
+cat("VIF (lineární aproximace):\n")
+print(vif(lm_for_vif))
+cat('\nKrátké shrnutí:')
+cat('\n- Primární analýza běží na měsíčních datech (frequency = 12).')
+cat('\n- Pro vyhodnocení plní zadání použijeme posledních', h_eval, 'měsíců jako holdout a počítáme RMSE/MAE/MAPE.')
+cat('\n- Pro zobrazení predikcí v grafech používáme širší horizon', h_plot, 'pro lepší přehled (rozlišeno od vyhodnocení).')
+cat('\n- Oříznuli jsme pouze vedoucí a koncové nuly, protože interní nuly mají informativní hodnotu pro epidemická data.')
+```
