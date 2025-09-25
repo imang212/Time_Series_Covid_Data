@@ -246,7 +246,7 @@ Odstraněno 18431 řádků s chybějícími hodnotami v new_cases</code></pre>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>start_year <span class="ot">&lt;-</span> <span class="fu">min</span>(monthly_data<span class="sc">$</span>year)</span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="co">#start_month &lt;- min(monthly_data$month[monthly_data$year == start_year])</span></span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>start_week <span class="ot">&lt;-</span> <span class="fu">min</span>(data<span class="sc">$</span>week[data<span class="sc">$</span>year <span class="sc">==</span> start_year])</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>start_week <span class="ot">&lt;-</span> <span class="fu">min</span>(data<span class="sc">$</span>week[data<span class="sc">$</span>year <span class="sc">==</span> start_year]<span class="sc">+</span><span class="dv">1</span>)</span>
 <span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>ts_data <span class="ot">&lt;-</span> <span class="fu">ts</span>(data<span class="sc">$</span>new_cases, <span class="at">start =</span> <span class="fu">c</span>(start_year, start_week), <span class="at">frequency =</span> <span class="fl">52.18</span>)</span>
 <span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a></span>
@@ -266,8 +266,8 @@ Odstraněno 18431 řádků s chybějícími hodnotami v new_cases</code></pre>
 <div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(ts_data, <span class="dv">20</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Time Series:
-Start = 2020 
-End = 2020.36412418551 
+Start = 2020.01916443082 
+End = 2020.38328861633 
 Frequency = 52.18 
  [1]       9     180     362    7589   50170   91959  125806   37063   34456
 [10]   89115  281947  791666 1577828 2020659 2227938 2130027 2239825 2234431
@@ -276,8 +276,8 @@ Frequency = 52.18
 <div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span>(ts_data, <span class="dv">20</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Time Series:
-Start = 2024.21617477961 
-End = 2024.58029896512 
+Start = 2024.23533921043 
+End = 2024.59946339594 
 Frequency = 52.18 
  [1] 206535 459450 164568 162611 132459 141823 127919 140377 156102 133151
 [11] 145262 150474 154478 160695 200701 205046 207990 236364 257506 214317</code></pre>
@@ -440,7 +440,7 @@ Souhrn sezónní složky:</code></pre>
 <div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">summary</span>(seasonal_component))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
--0.23906 -0.19290 -0.05116  0.07148  0.29444  0.66811 </code></pre>
+-0.23906 -0.19227  0.06284  0.14126  0.52185  0.66811 </code></pre>
 </div>
 </div>
 </section>
@@ -784,7 +784,7 @@ Model df: 6.   Total lags used: 48</code></pre>
 <span id="cb67-12"><a href="#cb67-12" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb67-13"><a href="#cb67-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Odstranění NA hodnot</span></span>
 <span id="cb67-14"><a href="#cb67-14" aria-hidden="true" tabindex="-1"></a>complete_idx <span class="ot">&lt;-</span> <span class="fu">complete.cases</span>(<span class="fu">cbind</span>(data<span class="sc">$</span>new_cases, external_vars))</span>
-<span id="cb67-15"><a href="#cb67-15" aria-hidden="true" tabindex="-1"></a>ts_complete <span class="ot">&lt;-</span> <span class="fu">ts</span>(<span class="fu">log1p</span>(data<span class="sc">$</span>new_cases[complete_idx]), <span class="at">start =</span> <span class="fu">c</span>(start_year, start_week), <span class="at">frequency =</span> <span class="dv">52</span>)</span>
+<span id="cb67-15"><a href="#cb67-15" aria-hidden="true" tabindex="-1"></a>ts_complete <span class="ot">&lt;-</span> <span class="fu">ts</span>(<span class="fu">log1p</span>(data<span class="sc">$</span>new_cases[complete_idx]), <span class="at">start =</span> <span class="fu">c</span>(start_year, start_week), <span class="at">frequency =</span> <span class="fl">52.18</span>)</span>
 <span id="cb67-16"><a href="#cb67-16" aria-hidden="true" tabindex="-1"></a>external_complete <span class="ot">&lt;-</span> external_vars[complete_idx, ]</span>
 <span id="cb67-17"><a href="#cb67-17" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb67-18"><a href="#cb67-18" aria-hidden="true" tabindex="-1"></a><span class="co"># ARIMAX model</span></span>
@@ -944,7 +944,7 @@ Kontrola časové řady pro predikci:</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb93"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb93-1"><a href="#cb93-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Start:"</span>, <span class="fu">paste</span>(<span class="fu">start</span>(ts_data), <span class="at">collapse =</span> <span class="st">", "</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Start: 2020 </code></pre>
+<pre><code>Start: 2020.01916443082 </code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb95"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb95-1"><a href="#cb95-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Frequency:"</span>, <span class="fu">frequency</span>(ts_data), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
@@ -965,7 +965,12 @@ Kontrola časové řady pro predikci:</code></pre>
 <span id="cb99-9"><a href="#cb99-9" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb99-10"><a href="#cb99-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Jednoduchá predikce bez složitého rozlišování modelů</span></span>
 <span id="cb99-11"><a href="#cb99-11" aria-hidden="true" tabindex="-1"></a>pred_func <span class="ot">&lt;-</span> <span class="fu">predict</span>(best_func_model, <span class="at">newdata =</span> future_data, <span class="at">interval =</span> <span class="st">"prediction"</span>)</span>
-<span id="cb99-12"><a href="#cb99-12" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Funkční model - predikce dokončena</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb99-12"><a href="#cb99-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb99-13"><a href="#cb99-13" aria-hidden="true" tabindex="-1"></a><span class="co"># zpět na původní škálu</span></span>
+<span id="cb99-14"><a href="#cb99-14" aria-hidden="true" tabindex="-1"></a>pred_func <span class="ot">&lt;-</span> <span class="fu">expm1</span>(pred_func)</span>
+<span id="cb99-15"><a href="#cb99-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb99-16"><a href="#cb99-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb99-17"><a href="#cb99-17" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Funkční model - predikce dokončena</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Funkční model - predikce dokončena</code></pre>
 </div>
@@ -982,179 +987,204 @@ Kontrola časové řady pro predikci:</code></pre>
 <span id="cb101-11"><a href="#cb101-11" aria-hidden="true" tabindex="-1"></a>}</span>
 <span id="cb101-12"><a href="#cb101-12" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb101-13"><a href="#cb101-13" aria-hidden="true" tabindex="-1"></a>pred_sarima <span class="ot">&lt;-</span> <span class="fu">forecast</span>(final_sarima, <span class="at">h =</span> horizon)</span>
-<span id="cb101-14"><a href="#cb101-14" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"SARIMA predikce dokončena</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb101-14"><a href="#cb101-14" aria-hidden="true" tabindex="-1"></a><span class="fu">autoplot</span>(pred_sarima)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="covid_data_analyse_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="6000"></p>
+</figure>
+</div>
+</div>
+<div class="sourceCode cell-code" id="cb102"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb102-1"><a href="#cb102-1" aria-hidden="true" tabindex="-1"></a><span class="do">## zpětný převod na původní škálu</span></span>
+<span id="cb102-2"><a href="#cb102-2" aria-hidden="true" tabindex="-1"></a>pred_sarima<span class="sc">$</span>mean  <span class="ot">&lt;-</span> <span class="fu">expm1</span>(pred_sarima<span class="sc">$</span>mean)</span>
+<span id="cb102-3"><a href="#cb102-3" aria-hidden="true" tabindex="-1"></a>pred_sarima<span class="sc">$</span>lower <span class="ot">&lt;-</span> <span class="fu">expm1</span>(pred_sarima<span class="sc">$</span>lower)</span>
+<span id="cb102-4"><a href="#cb102-4" aria-hidden="true" tabindex="-1"></a>pred_sarima<span class="sc">$</span>upper <span class="ot">&lt;-</span> <span class="fu">expm1</span>(pred_sarima<span class="sc">$</span>upper)</span>
+<span id="cb102-5"><a href="#cb102-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb102-6"><a href="#cb102-6" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"SARIMA predikce dokončena</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>SARIMA predikce dokončena</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb103"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb103-1"><a href="#cb103-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ARIMAX predikce (potřebujeme budoucí hodnoty externích proměnných)</span></span>
-<span id="cb103-2"><a href="#cb103-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Pro zjednodušení použijeme poslední dostupné hodnoty</span></span>
-<span id="cb103-3"><a href="#cb103-3" aria-hidden="true" tabindex="-1"></a>last_external <span class="ot">&lt;-</span> external_complete[<span class="fu">nrow</span>(external_complete), , drop <span class="ot">=</span> <span class="cn">FALSE</span>]</span>
-<span id="cb103-4"><a href="#cb103-4" aria-hidden="true" tabindex="-1"></a>future_external <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">rep</span>(<span class="fu">as.numeric</span>(last_external), horizon), <span class="at">nrow =</span> horizon, <span class="at">byrow =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb103-5"><a href="#cb103-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb103-6"><a href="#cb103-6" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(future_external) <span class="ot">&lt;-</span> <span class="fu">colnames</span>(external_complete)</span>
-<span id="cb103-7"><a href="#cb103-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb103-8"><a href="#cb103-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb103-9"><a href="#cb103-9" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Názvy sloupců v trénovacích datech:"</span>, <span class="fu">colnames</span>(external_complete), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb104"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb104-1"><a href="#cb104-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ARIMAX predikce (potřebujeme budoucí hodnoty externích proměnných)</span></span>
+<span id="cb104-2"><a href="#cb104-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Pro zjednodušení použijeme poslední dostupné hodnoty</span></span>
+<span id="cb104-3"><a href="#cb104-3" aria-hidden="true" tabindex="-1"></a>last_external <span class="ot">&lt;-</span> external_complete[<span class="fu">nrow</span>(external_complete), , drop <span class="ot">=</span> <span class="cn">FALSE</span>]</span>
+<span id="cb104-4"><a href="#cb104-4" aria-hidden="true" tabindex="-1"></a>future_external <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">rep</span>(<span class="fu">as.numeric</span>(last_external), horizon), <span class="at">nrow =</span> horizon, <span class="at">byrow =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb104-5"><a href="#cb104-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb104-6"><a href="#cb104-6" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(future_external) <span class="ot">&lt;-</span> <span class="fu">colnames</span>(external_complete)</span>
+<span id="cb104-7"><a href="#cb104-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb104-8"><a href="#cb104-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb104-9"><a href="#cb104-9" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Názvy sloupců v trénovacích datech:"</span>, <span class="fu">colnames</span>(external_complete), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Názvy sloupců v trénovacích datech: deaths_lag stringency_lag hosp_lag </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb105"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb105-1"><a href="#cb105-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Názvy sloupců v predikčních datech:"</span>, <span class="fu">colnames</span>(future_external), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb106"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb106-1"><a href="#cb106-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Názvy sloupců v predikčních datech:"</span>, <span class="fu">colnames</span>(future_external), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Názvy sloupců v predikčních datech: deaths_lag stringency_lag hosp_lag </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb107"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb107-1"><a href="#cb107-1" aria-hidden="true" tabindex="-1"></a>pred_arimax <span class="ot">=</span> <span class="fu">forecast</span>(arimax_model, <span class="at">xreg =</span> future_external, <span class="at">h =</span> horizon)</span>
-<span id="cb107-2"><a href="#cb107-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"ARIMAX predikce dokončena</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb108"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb108-1"><a href="#cb108-1" aria-hidden="true" tabindex="-1"></a>pred_arimax <span class="ot">=</span> <span class="fu">forecast</span>(arimax_model, <span class="at">xreg =</span> future_external, <span class="at">h =</span> horizon)</span>
+<span id="cb108-2"><a href="#cb108-2" aria-hidden="true" tabindex="-1"></a><span class="fu">autoplot</span>(pred_arimax)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="covid_data_analyse_files/figure-html/unnamed-chunk-15-2.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="6000"></p>
+</figure>
+</div>
+</div>
+<div class="sourceCode cell-code" id="cb109"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb109-1"><a href="#cb109-1" aria-hidden="true" tabindex="-1"></a><span class="co"># zpět na původní škálu</span></span>
+<span id="cb109-2"><a href="#cb109-2" aria-hidden="true" tabindex="-1"></a>pred_arimax<span class="sc">$</span>mean  <span class="ot">&lt;-</span> <span class="fu">expm1</span>(pred_arimax<span class="sc">$</span>mean)</span>
+<span id="cb109-3"><a href="#cb109-3" aria-hidden="true" tabindex="-1"></a>pred_arimax<span class="sc">$</span>lower <span class="ot">&lt;-</span> <span class="fu">expm1</span>(pred_arimax<span class="sc">$</span>lower)</span>
+<span id="cb109-4"><a href="#cb109-4" aria-hidden="true" tabindex="-1"></a>pred_arimax<span class="sc">$</span>upper <span class="ot">&lt;-</span> <span class="fu">expm1</span>(pred_arimax<span class="sc">$</span>upper)</span>
+<span id="cb109-5"><a href="#cb109-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb109-6"><a href="#cb109-6" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"ARIMAX predikce dokončena</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>ARIMAX predikce dokončena</code></pre>
 </div>
 </div>
+<p><img src="http://127.0.0.1:20303/chunk_output/s/B26260BB/cll3y3e8jgixb/00001c.png" class="img-fluid"></p>
 <section id="grafické-srovnání-a-hodnocení-modelů" class="level4">
 <h4 class="anchored" data-anchor-id="grafické-srovnání-a-hodnocení-modelů">Grafické srovnání a hodnocení modelů</h4>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb109"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb109-1"><a href="#cb109-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Grafické zobrazení predikcí</span></span>
-<span id="cb109-2"><a href="#cb109-2" aria-hidden="true" tabindex="-1"></a>future_dates <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fu">max</span>(data<span class="sc">$</span>date) <span class="sc">+</span> <span class="dv">7</span>, <span class="at">by =</span> <span class="st">"week"</span>, <span class="at">length.out =</span> horizon)</span>
-<span id="cb109-3"><a href="#cb109-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb109-4"><a href="#cb109-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Budoucí data:"</span>, <span class="fu">as.character</span>(future_dates[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>]), <span class="st">"...</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb111"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb111-1"><a href="#cb111-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Grafické zobrazení predikcí</span></span>
+<span id="cb111-2"><a href="#cb111-2" aria-hidden="true" tabindex="-1"></a>future_dates <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fu">max</span>(data<span class="sc">$</span>date) <span class="sc">+</span> <span class="dv">7</span>, <span class="at">by =</span> <span class="st">"week"</span>, <span class="at">length.out =</span> horizon)</span>
+<span id="cb111-3"><a href="#cb111-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb111-4"><a href="#cb111-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Budoucí data:"</span>, <span class="fu">as.character</span>(future_dates[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>]), <span class="st">"...</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Budoucí data: 2024-08-11 2024-08-18 2024-08-25 ...</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb111"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb111-1"><a href="#cb111-1" aria-hidden="true" tabindex="-1"></a><span class="co"># === KONTROLA PŘED GRAFEM ===</span></span>
-<span id="cb111-2"><a href="#cb111-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">=== FINÁLNÍ KONTROLA ===</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb113"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb113-1"><a href="#cb113-1" aria-hidden="true" tabindex="-1"></a><span class="co"># === KONTROLA PŘED GRAFEM ===</span></span>
+<span id="cb113-2"><a href="#cb113-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">=== FINÁLNÍ KONTROLA ===</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>
 === FINÁLNÍ KONTROLA ===</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb113"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb113-1"><a href="#cb113-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Funkční - rozsah:"</span>, <span class="fu">range</span>(pred_func[,<span class="dv">1</span>]), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb115"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb115-1"><a href="#cb115-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Funkční - rozsah:"</span>, <span class="fu">range</span>(pred_func[,<span class="dv">1</span>]), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Funkční - rozsah: 9.302858 10.39898 </code></pre>
+<pre><code>Funkční - rozsah: 10968.32 32825.11 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb115"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb115-1"><a href="#cb115-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"SARIMA - rozsah:"</span>, <span class="fu">range</span>(pred_sarima<span class="sc">$</span>mean), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb117"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb117-1"><a href="#cb117-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"SARIMA - rozsah:"</span>, <span class="fu">range</span>(pred_sarima<span class="sc">$</span>mean), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>SARIMA - rozsah: 12.17197 12.31116 </code></pre>
+<pre><code>SARIMA - rozsah: 193293.8 222159.6 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb117"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb117-1"><a href="#cb117-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"ARIMAX - rozsah:"</span>, <span class="fu">range</span>(pred_arimax<span class="sc">$</span>mean), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb119"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb119-1"><a href="#cb119-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"ARIMAX - rozsah:"</span>, <span class="fu">range</span>(pred_arimax<span class="sc">$</span>mean), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>ARIMAX - rozsah: 15.27911 15.62642 </code></pre>
+<pre><code>ARIMAX - rozsah: 4321477 6116011 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb119"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb119-1"><a href="#cb119-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Test na nuly</span></span>
-<span id="cb119-2"><a href="#cb119-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span>(<span class="fu">all</span>(pred_sarima<span class="sc">$</span>mean <span class="sc">==</span> <span class="dv">0</span>)) {</span>
-<span id="cb119-3"><a href="#cb119-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"PROBLÉM: SARIMA predikuje samé nuly!</span><span class="sc">\n</span><span class="st">"</span>)</span>
-<span id="cb119-4"><a href="#cb119-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"Poslední hodnota v časové řadě:"</span>, <span class="fu">tail</span>(<span class="fu">as.numeric</span>(ts_data), <span class="dv">1</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
-<span id="cb119-5"><a href="#cb119-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"Model summary:</span><span class="sc">\n</span><span class="st">"</span>)</span>
-<span id="cb119-6"><a href="#cb119-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(<span class="fu">summary</span>(final_sarima))</span>
-<span id="cb119-7"><a href="#cb119-7" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Oprava: použij poslední hodnotu</span></span>
-<span id="cb119-8"><a href="#cb119-8" aria-hidden="true" tabindex="-1"></a>  pred_sarima<span class="sc">$</span>mean <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="fu">tail</span>(<span class="fu">as.numeric</span>(ts_weekly_data), <span class="dv">1</span>), horizon)</span>
-<span id="cb119-9"><a href="#cb119-9" aria-hidden="true" tabindex="-1"></a>  pred_sarima<span class="sc">$</span>lower[,<span class="dv">2</span>] <span class="ot">&lt;-</span> pred_sarima<span class="sc">$</span>mean <span class="sc">*</span> <span class="fl">0.8</span></span>
-<span id="cb119-10"><a href="#cb119-10" aria-hidden="true" tabindex="-1"></a>  pred_sarima<span class="sc">$</span>upper[,<span class="dv">2</span>] <span class="ot">&lt;-</span> pred_sarima<span class="sc">$</span>mean <span class="sc">*</span> <span class="fl">1.2</span></span>
-<span id="cb119-11"><a href="#cb119-11" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb119-12"><a href="#cb119-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb119-13"><a href="#cb119-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Určíme počet historických pozorování k zobrazení (posledních 24 měsíců nebo méně)</span></span>
-<span id="cb119-14"><a href="#cb119-14" aria-hidden="true" tabindex="-1"></a>last_n_obs <span class="ot">&lt;-</span> <span class="dv">50</span></span>
-<span id="cb119-15"><a href="#cb119-15" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Zobrazím posledních"</span>, last_n_obs, <span class="st">"měsíčních pozorování</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb121"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb121-1"><a href="#cb121-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Test na nuly</span></span>
+<span id="cb121-2"><a href="#cb121-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span>(<span class="fu">all</span>(pred_sarima<span class="sc">$</span>mean <span class="sc">==</span> <span class="dv">0</span>)) {</span>
+<span id="cb121-3"><a href="#cb121-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"PROBLÉM: SARIMA predikuje samé nuly!</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb121-4"><a href="#cb121-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"Poslední hodnota v časové řadě:"</span>, <span class="fu">tail</span>(<span class="fu">as.numeric</span>(ts_data), <span class="dv">1</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb121-5"><a href="#cb121-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"Model summary:</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb121-6"><a href="#cb121-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(<span class="fu">summary</span>(final_sarima))</span>
+<span id="cb121-7"><a href="#cb121-7" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Oprava: použij poslední hodnotu</span></span>
+<span id="cb121-8"><a href="#cb121-8" aria-hidden="true" tabindex="-1"></a>  pred_sarima<span class="sc">$</span>mean <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="fu">tail</span>(<span class="fu">as.numeric</span>(ts_weekly_data), <span class="dv">1</span>), horizon)</span>
+<span id="cb121-9"><a href="#cb121-9" aria-hidden="true" tabindex="-1"></a>  pred_sarima<span class="sc">$</span>lower[,<span class="dv">2</span>] <span class="ot">&lt;-</span> pred_sarima<span class="sc">$</span>mean <span class="sc">*</span> <span class="fl">0.8</span></span>
+<span id="cb121-10"><a href="#cb121-10" aria-hidden="true" tabindex="-1"></a>  pred_sarima<span class="sc">$</span>upper[,<span class="dv">2</span>] <span class="ot">&lt;-</span> pred_sarima<span class="sc">$</span>mean <span class="sc">*</span> <span class="fl">1.2</span></span>
+<span id="cb121-11"><a href="#cb121-11" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb121-12"><a href="#cb121-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb121-13"><a href="#cb121-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Určíme počet historických pozorování k zobrazení (posledních 24 měsíců nebo méně)</span></span>
+<span id="cb121-14"><a href="#cb121-14" aria-hidden="true" tabindex="-1"></a>last_n_obs <span class="ot">&lt;-</span> <span class="dv">50</span></span>
+<span id="cb121-15"><a href="#cb121-15" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Zobrazím posledních"</span>, last_n_obs, <span class="st">"měsíčních pozorování</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Zobrazím posledních 50 měsíčních pozorování</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb121"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb121-1"><a href="#cb121-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span>(<span class="fu">nrow</span>(data) <span class="sc">&lt;</span> last_n_obs) last_n_obs <span class="ot">&lt;-</span> <span class="fu">nrow</span>(data);</span>
-<span id="cb121-2"><a href="#cb121-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb121-3"><a href="#cb121-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Historická data</span></span>
-<span id="cb121-4"><a href="#cb121-4" aria-hidden="true" tabindex="-1"></a>historical_dates <span class="ot">&lt;-</span> <span class="fu">tail</span>(data<span class="sc">$</span>date, last_n_obs)</span>
-<span id="cb121-5"><a href="#cb121-5" aria-hidden="true" tabindex="-1"></a>historical_values <span class="ot">&lt;-</span> <span class="fu">tail</span>(data<span class="sc">$</span>new_cases, last_n_obs)</span>
-<span id="cb121-6"><a href="#cb121-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb121-7"><a href="#cb121-7" aria-hidden="true" tabindex="-1"></a><span class="co">#Kontrola, že predikce mají správnou délku a nejsou NA </span></span>
-<span id="cb121-8"><a href="#cb121-8" aria-hidden="true" tabindex="-1"></a>pred_func_clean <span class="ot">&lt;-</span> pred_func[,<span class="dv">1</span>] </span>
-<span id="cb121-9"><a href="#cb121-9" aria-hidden="true" tabindex="-1"></a>pred_func_lower <span class="ot">&lt;-</span> pred_func[,<span class="dv">2</span>] </span>
-<span id="cb121-10"><a href="#cb121-10" aria-hidden="true" tabindex="-1"></a>pred_func_upper <span class="ot">&lt;-</span> pred_func[,<span class="dv">3</span>] </span>
-<span id="cb121-11"><a href="#cb121-11" aria-hidden="true" tabindex="-1"></a>pred_sarima_clean <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(pred_sarima<span class="sc">$</span>mean) </span>
-<span id="cb121-12"><a href="#cb121-12" aria-hidden="true" tabindex="-1"></a>pred_sarima_lower <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(pred_sarima<span class="sc">$</span>lower[,<span class="dv">2</span>]) </span>
-<span id="cb121-13"><a href="#cb121-13" aria-hidden="true" tabindex="-1"></a>pred_sarima_upper <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(pred_sarima<span class="sc">$</span>upper[,<span class="dv">2</span>]) </span>
-<span id="cb121-14"><a href="#cb121-14" aria-hidden="true" tabindex="-1"></a>pred_arimax_clean <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(pred_arimax<span class="sc">$</span>mean) </span>
-<span id="cb121-15"><a href="#cb121-15" aria-hidden="true" tabindex="-1"></a>pred_arimax_lower <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(pred_arimax<span class="sc">$</span>lower[,<span class="dv">2</span>]) </span>
-<span id="cb121-16"><a href="#cb121-16" aria-hidden="true" tabindex="-1"></a>pred_arimax_upper <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(pred_arimax<span class="sc">$</span>upper[,<span class="dv">2</span>]) </span>
-<span id="cb121-17"><a href="#cb121-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Náhrada NA hodnotami z SARIMA predikce pokud je potřeba </span></span>
-<span id="cb121-18"><a href="#cb121-18" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span>(<span class="fu">any</span>(<span class="fu">is.na</span>(pred_func_clean))) { </span>
-<span id="cb121-19"><a href="#cb121-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"Opravuji NA v funkčních predikcích</span><span class="sc">\n</span><span class="st">"</span>) </span>
-<span id="cb121-20"><a href="#cb121-20" aria-hidden="true" tabindex="-1"></a>  pred_func_clean[<span class="fu">is.na</span>(pred_func_clean)] <span class="ot">&lt;-</span> pred_sarima<span class="sc">$</span>mean[<span class="fu">is.na</span>(pred_func_clean)]</span>
-<span id="cb121-21"><a href="#cb121-21" aria-hidden="true" tabindex="-1"></a>  pred_func_lower[<span class="fu">is.na</span>(pred_func_lower)] <span class="ot">&lt;-</span> pred_sarima<span class="sc">$</span>lower[<span class="fu">is.na</span>(pred_func_lower),<span class="dv">2</span>]</span>
-<span id="cb121-22"><a href="#cb121-22" aria-hidden="true" tabindex="-1"></a>  pred_func_upper[<span class="fu">is.na</span>(pred_func_upper)] <span class="ot">&lt;-</span> pred_sarima<span class="sc">$</span>upper[<span class="fu">is.na</span>(pred_func_upper),<span class="dv">2</span>] </span>
-<span id="cb121-23"><a href="#cb121-23" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb121-24"><a href="#cb121-24" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb121-25"><a href="#cb121-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Vytvoření clean dat pro ggplot</span></span>
-<span id="cb121-26"><a href="#cb121-26" aria-hidden="true" tabindex="-1"></a>plot_data_clean <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
-<span id="cb121-27"><a href="#cb121-27" aria-hidden="true" tabindex="-1"></a>  <span class="at">date =</span> <span class="fu">c</span>(historical_dates, future_dates),</span>
-<span id="cb121-28"><a href="#cb121-28" aria-hidden="true" tabindex="-1"></a>  <span class="at">actual =</span> <span class="fu">c</span>(historical_values, <span class="fu">rep</span>(<span class="cn">NA</span>, horizon)),</span>
-<span id="cb121-29"><a href="#cb121-29" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb121-30"><a href="#cb121-30" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Funkční model</span></span>
-<span id="cb121-31"><a href="#cb121-31" aria-hidden="true" tabindex="-1"></a>  <span class="at">func_pred =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), pred_func_clean),</span>
-<span id="cb121-32"><a href="#cb121-32" aria-hidden="true" tabindex="-1"></a>  <span class="at">func_lower =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), pred_func_lower),</span>
-<span id="cb121-33"><a href="#cb121-33" aria-hidden="true" tabindex="-1"></a>  <span class="at">func_upper =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), pred_func_upper),</span>
-<span id="cb121-34"><a href="#cb121-34" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb121-35"><a href="#cb121-35" aria-hidden="true" tabindex="-1"></a>  <span class="co"># SARIMA model  </span></span>
-<span id="cb121-36"><a href="#cb121-36" aria-hidden="true" tabindex="-1"></a>  <span class="at">sarima_pred =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_sarima<span class="sc">$</span>mean)),</span>
-<span id="cb121-37"><a href="#cb121-37" aria-hidden="true" tabindex="-1"></a>  <span class="at">sarima_lower =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_sarima<span class="sc">$</span>lower[,<span class="dv">2</span>])),</span>
-<span id="cb121-38"><a href="#cb121-38" aria-hidden="true" tabindex="-1"></a>  <span class="at">sarima_upper =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_sarima<span class="sc">$</span>upper[,<span class="dv">2</span>])),</span>
-<span id="cb121-39"><a href="#cb121-39" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb121-40"><a href="#cb121-40" aria-hidden="true" tabindex="-1"></a>  <span class="co"># ARIMAX model</span></span>
-<span id="cb121-41"><a href="#cb121-41" aria-hidden="true" tabindex="-1"></a>  <span class="at">arimax_pred =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_arimax<span class="sc">$</span>mean)),</span>
-<span id="cb121-42"><a href="#cb121-42" aria-hidden="true" tabindex="-1"></a>  <span class="at">arimax_lower =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_arimax<span class="sc">$</span>lower[,<span class="dv">2</span>])),</span>
-<span id="cb121-43"><a href="#cb121-43" aria-hidden="true" tabindex="-1"></a>  <span class="at">arimax_upper =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_arimax<span class="sc">$</span>upper[,<span class="dv">2</span>]))</span>
-<span id="cb121-44"><a href="#cb121-44" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb121-45"><a href="#cb121-45" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb121-46"><a href="#cb121-46" aria-hidden="true" tabindex="-1"></a><span class="co"># Kontrola finálních dat</span></span>
-<span id="cb121-47"><a href="#cb121-47" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Kontrola plot_data_clean:</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb123"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb123-1"><a href="#cb123-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span>(<span class="fu">nrow</span>(data) <span class="sc">&lt;</span> last_n_obs) last_n_obs <span class="ot">&lt;-</span> <span class="fu">nrow</span>(data);</span>
+<span id="cb123-2"><a href="#cb123-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb123-3"><a href="#cb123-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Historická data</span></span>
+<span id="cb123-4"><a href="#cb123-4" aria-hidden="true" tabindex="-1"></a>historical_dates <span class="ot">&lt;-</span> <span class="fu">tail</span>(data<span class="sc">$</span>date, last_n_obs)</span>
+<span id="cb123-5"><a href="#cb123-5" aria-hidden="true" tabindex="-1"></a>historical_values <span class="ot">&lt;-</span> <span class="fu">tail</span>(data<span class="sc">$</span>new_cases, last_n_obs)</span>
+<span id="cb123-6"><a href="#cb123-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb123-7"><a href="#cb123-7" aria-hidden="true" tabindex="-1"></a><span class="co">#Kontrola, že predikce mají správnou délku a nejsou NA </span></span>
+<span id="cb123-8"><a href="#cb123-8" aria-hidden="true" tabindex="-1"></a>pred_func_clean <span class="ot">&lt;-</span> pred_func[,<span class="dv">1</span>] </span>
+<span id="cb123-9"><a href="#cb123-9" aria-hidden="true" tabindex="-1"></a>pred_func_lower <span class="ot">&lt;-</span> pred_func[,<span class="dv">2</span>] </span>
+<span id="cb123-10"><a href="#cb123-10" aria-hidden="true" tabindex="-1"></a>pred_func_upper <span class="ot">&lt;-</span> pred_func[,<span class="dv">3</span>] </span>
+<span id="cb123-11"><a href="#cb123-11" aria-hidden="true" tabindex="-1"></a>pred_sarima_clean <span class="ot">&lt;-</span> pred_sarima<span class="sc">$</span>mean</span>
+<span id="cb123-12"><a href="#cb123-12" aria-hidden="true" tabindex="-1"></a>pred_sarima_lower <span class="ot">&lt;-</span> pred_sarima<span class="sc">$</span>lower[,<span class="dv">2</span>]</span>
+<span id="cb123-13"><a href="#cb123-13" aria-hidden="true" tabindex="-1"></a>pred_sarima_upper <span class="ot">&lt;-</span> pred_sarima<span class="sc">$</span>upper[,<span class="dv">2</span>]</span>
+<span id="cb123-14"><a href="#cb123-14" aria-hidden="true" tabindex="-1"></a>pred_arimax_clean <span class="ot">&lt;-</span> pred_arimax<span class="sc">$</span>mean</span>
+<span id="cb123-15"><a href="#cb123-15" aria-hidden="true" tabindex="-1"></a>pred_arimax_lower <span class="ot">&lt;-</span> pred_arimax<span class="sc">$</span>lower[,<span class="dv">2</span>]</span>
+<span id="cb123-16"><a href="#cb123-16" aria-hidden="true" tabindex="-1"></a>pred_arimax_upper <span class="ot">&lt;-</span> pred_arimax<span class="sc">$</span>upper[,<span class="dv">2</span>]</span>
+<span id="cb123-17"><a href="#cb123-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb123-18"><a href="#cb123-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Náhrada NA hodnotami z SARIMA predikce pokud je potřeba </span></span>
+<span id="cb123-19"><a href="#cb123-19" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span>(<span class="fu">any</span>(<span class="fu">is.na</span>(pred_func_clean))) { </span>
+<span id="cb123-20"><a href="#cb123-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"Opravuji NA v funkčních predikcích</span><span class="sc">\n</span><span class="st">"</span>) </span>
+<span id="cb123-21"><a href="#cb123-21" aria-hidden="true" tabindex="-1"></a>  pred_func_clean[<span class="fu">is.na</span>(pred_func_clean)] <span class="ot">&lt;-</span> pred_sarima<span class="sc">$</span>mean[<span class="fu">is.na</span>(pred_func_clean)]</span>
+<span id="cb123-22"><a href="#cb123-22" aria-hidden="true" tabindex="-1"></a>  pred_func_lower[<span class="fu">is.na</span>(pred_func_lower)] <span class="ot">&lt;-</span> pred_sarima<span class="sc">$</span>lower[<span class="fu">is.na</span>(pred_func_lower),<span class="dv">2</span>]</span>
+<span id="cb123-23"><a href="#cb123-23" aria-hidden="true" tabindex="-1"></a>  pred_func_upper[<span class="fu">is.na</span>(pred_func_upper)] <span class="ot">&lt;-</span> pred_sarima<span class="sc">$</span>upper[<span class="fu">is.na</span>(pred_func_upper),<span class="dv">2</span>] </span>
+<span id="cb123-24"><a href="#cb123-24" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb123-25"><a href="#cb123-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb123-26"><a href="#cb123-26" aria-hidden="true" tabindex="-1"></a><span class="co"># Vytvoření clean dat pro ggplot</span></span>
+<span id="cb123-27"><a href="#cb123-27" aria-hidden="true" tabindex="-1"></a>plot_data_clean <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb123-28"><a href="#cb123-28" aria-hidden="true" tabindex="-1"></a>  <span class="at">date =</span> <span class="fu">c</span>(historical_dates, future_dates),</span>
+<span id="cb123-29"><a href="#cb123-29" aria-hidden="true" tabindex="-1"></a>  <span class="at">actual =</span> <span class="fu">c</span>(historical_values, <span class="fu">rep</span>(<span class="cn">NA</span>, horizon)),</span>
+<span id="cb123-30"><a href="#cb123-30" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Funkční model</span></span>
+<span id="cb123-31"><a href="#cb123-31" aria-hidden="true" tabindex="-1"></a>  <span class="at">func_pred =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_func_clean)),</span>
+<span id="cb123-32"><a href="#cb123-32" aria-hidden="true" tabindex="-1"></a>  <span class="at">func_lower =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_func_lower)),</span>
+<span id="cb123-33"><a href="#cb123-33" aria-hidden="true" tabindex="-1"></a>  <span class="at">func_upper =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_func_upper)),</span>
+<span id="cb123-34"><a href="#cb123-34" aria-hidden="true" tabindex="-1"></a>  <span class="co"># SARIMA model  </span></span>
+<span id="cb123-35"><a href="#cb123-35" aria-hidden="true" tabindex="-1"></a>  <span class="at">sarima_pred =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_sarima<span class="sc">$</span>mean)),</span>
+<span id="cb123-36"><a href="#cb123-36" aria-hidden="true" tabindex="-1"></a>  <span class="at">sarima_lower =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_sarima<span class="sc">$</span>lower[,<span class="dv">2</span>])),</span>
+<span id="cb123-37"><a href="#cb123-37" aria-hidden="true" tabindex="-1"></a>  <span class="at">sarima_upper =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_sarima<span class="sc">$</span>upper[,<span class="dv">2</span>])),</span>
+<span id="cb123-38"><a href="#cb123-38" aria-hidden="true" tabindex="-1"></a>  <span class="co"># ARIMAX model</span></span>
+<span id="cb123-39"><a href="#cb123-39" aria-hidden="true" tabindex="-1"></a>  <span class="at">arimax_pred =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_arimax<span class="sc">$</span>mean)),</span>
+<span id="cb123-40"><a href="#cb123-40" aria-hidden="true" tabindex="-1"></a>  <span class="at">arimax_lower =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_arimax<span class="sc">$</span>lower[,<span class="dv">2</span>])),</span>
+<span id="cb123-41"><a href="#cb123-41" aria-hidden="true" tabindex="-1"></a>  <span class="at">arimax_upper =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="cn">NA</span>, last_n_obs), <span class="fu">as.numeric</span>(pred_arimax<span class="sc">$</span>upper[,<span class="dv">2</span>]))</span>
+<span id="cb123-42"><a href="#cb123-42" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb123-43"><a href="#cb123-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb123-44"><a href="#cb123-44" aria-hidden="true" tabindex="-1"></a><span class="co"># Kontrola finálních dat</span></span>
+<span id="cb123-45"><a href="#cb123-45" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Kontrola plot_data_clean:</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Kontrola plot_data_clean:</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb123"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb123-1"><a href="#cb123-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Počet řádků:"</span>, <span class="fu">nrow</span>(plot_data_clean), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb125"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb125-1"><a href="#cb125-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Počet řádků:"</span>, <span class="fu">nrow</span>(plot_data_clean), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Počet řádků: 60 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb125"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb125-1"><a href="#cb125-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"NA v actual:"</span>, <span class="fu">sum</span>(<span class="fu">is.na</span>(plot_data_clean<span class="sc">$</span>actual)), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb127"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb127-1"><a href="#cb127-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"NA v actual:"</span>, <span class="fu">sum</span>(<span class="fu">is.na</span>(plot_data_clean<span class="sc">$</span>actual)), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>NA v actual: 10 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb127"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb127-1"><a href="#cb127-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"NA v func_pred:"</span>, <span class="fu">sum</span>(<span class="fu">is.na</span>(plot_data_clean<span class="sc">$</span>func_pred)), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb129"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb129-1"><a href="#cb129-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"NA v func_pred:"</span>, <span class="fu">sum</span>(<span class="fu">is.na</span>(plot_data_clean<span class="sc">$</span>func_pred)), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>NA v func_pred: 50 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb129"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb129-1"><a href="#cb129-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"NA v sarima_pred:"</span>, <span class="fu">sum</span>(<span class="fu">is.na</span>(plot_data_clean<span class="sc">$</span>sarima_pred)), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb131"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb131-1"><a href="#cb131-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"NA v sarima_pred:"</span>, <span class="fu">sum</span>(<span class="fu">is.na</span>(plot_data_clean<span class="sc">$</span>sarima_pred)), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>NA v sarima_pred: 50 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb131"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb131-1"><a href="#cb131-1" aria-hidden="true" tabindex="-1"></a>base_plot <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(plot_data_clean, <span class="fu">aes</span>(<span class="at">x =</span> date)) <span class="sc">+</span></span>
-<span id="cb131-2"><a href="#cb131-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> actual), <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">size =</span> <span class="dv">1</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
-<span id="cb131-3"><a href="#cb131-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">y =</span> actual), <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">size =</span> <span class="fl">1.2</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
-<span id="cb131-4"><a href="#cb131-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">max</span>(historical_dates), <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">alpha =</span> <span class="fl">0.7</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb133"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb133-1"><a href="#cb133-1" aria-hidden="true" tabindex="-1"></a>base_plot <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(plot_data_clean, <span class="fu">aes</span>(<span class="at">x =</span> date)) <span class="sc">+</span></span>
+<span id="cb133-2"><a href="#cb133-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> actual), <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">size =</span> <span class="dv">1</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
+<span id="cb133-3"><a href="#cb133-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">y =</span> actual), <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">size =</span> <span class="fl">1.2</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
+<span id="cb133-4"><a href="#cb133-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">max</span>(historical_dates), <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">alpha =</span> <span class="fl">0.7</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb132"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb132-1"><a href="#cb132-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Vylepšený graf predikcí</span></span>
-<span id="cb132-2"><a href="#cb132-2" aria-hidden="true" tabindex="-1"></a>prediction_plot <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(plot_data_clean, <span class="fu">aes</span>(<span class="at">x =</span> date)) <span class="sc">+</span></span>
-<span id="cb132-3"><a href="#cb132-3" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Historická data - body a čáry</span></span>
-<span id="cb132-4"><a href="#cb132-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> actual), <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">size =</span> <span class="dv">1</span>, <span class="at">alpha =</span> <span class="fl">0.8</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
-<span id="cb132-5"><a href="#cb132-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">y =</span> actual), <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">size =</span> <span class="fl">1.2</span>, <span class="at">alpha =</span> <span class="fl">0.7</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
-<span id="cb132-6"><a href="#cb132-6" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Funkční model</span></span>
-<span id="cb132-7"><a href="#cb132-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> func_pred), <span class="at">color =</span> <span class="st">"red"</span>, <span class="at">size =</span> <span class="dv">1</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
-<span id="cb132-8"><a href="#cb132-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">y =</span> func_pred), <span class="at">color =</span> <span class="st">"red"</span>, <span class="at">size =</span> <span class="fl">1.2</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
-<span id="cb132-9"><a href="#cb132-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> func_lower, <span class="at">ymax =</span> func_upper), <span class="at">fill =</span> <span class="st">"red"</span>, <span class="at">alpha =</span> <span class="fl">0.2</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
-<span id="cb132-10"><a href="#cb132-10" aria-hidden="true" tabindex="-1"></a>  <span class="co"># SARIMA model</span></span>
-<span id="cb132-11"><a href="#cb132-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> sarima_pred), <span class="at">color =</span> <span class="st">"blue"</span>, <span class="at">size =</span> <span class="dv">1</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
-<span id="cb132-12"><a href="#cb132-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">y =</span> sarima_pred), <span class="at">color =</span> <span class="st">"blue"</span>, <span class="at">size =</span> <span class="fl">1.2</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
-<span id="cb132-13"><a href="#cb132-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> sarima_lower, <span class="at">ymax =</span> sarima_upper), <span class="at">fill =</span> <span class="st">"blue"</span>, <span class="at">alpha =</span> <span class="fl">0.2</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
-<span id="cb132-14"><a href="#cb132-14" aria-hidden="true" tabindex="-1"></a>  <span class="co"># ARIMAX model</span></span>
-<span id="cb132-15"><a href="#cb132-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> arimax_pred), <span class="at">color =</span> <span class="st">"green"</span>, <span class="at">size =</span> <span class="dv">1</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
-<span id="cb132-16"><a href="#cb132-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">y =</span> arimax_pred), <span class="at">color =</span> <span class="st">"green"</span>, <span class="at">size =</span> <span class="fl">1.2</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
-<span id="cb132-17"><a href="#cb132-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> arimax_lower, <span class="at">ymax =</span> arimax_upper), <span class="at">fill =</span> <span class="st">"green"</span>, <span class="at">alpha =</span> <span class="fl">0.2</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
-<span id="cb132-18"><a href="#cb132-18" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Vertikální čára oddělující historii od predikcí</span></span>
-<span id="cb132-19"><a href="#cb132-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">max</span>(historical_dates), <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">alpha =</span> <span class="fl">0.7</span>, <span class="at">color =</span> <span class="st">"gray50"</span>, <span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
-<span id="cb132-20"><a href="#cb132-20" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Lepší popisky a téma</span></span>
-<span id="cb132-21"><a href="#cb132-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Predikce týdenních nových případů - srovnání modelů"</span>, <span class="at">x =</span> <span class="st">"Datum"</span>, <span class="at">y =</span> <span class="st">"Počet případů (měsíčně)"</span>,</span>
-<span id="cb132-22"><a href="#cb132-22" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="fu">paste</span>(<span class="st">"Historická data (černá) | Predikce: Funkční (červená), SARIMA (modrá), ARIMAX (zelená)"</span>, <span class="st">"</span><span class="sc">\n</span><span class="st">Přerušovaná čára označuje konec historických dat"</span>)) <span class="sc">+</span></span>
-<span id="cb132-23"><a href="#cb132-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
-<span id="cb132-24"><a href="#cb132-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>, <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">14</span>, <span class="at">hjust =</span> <span class="fl">0.5</span>, <span class="at">face =</span> <span class="st">"bold"</span>), <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">11</span>, <span class="at">hjust =</span> <span class="fl">0.5</span>),</span>
-<span id="cb132-25"><a href="#cb132-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">angle =</span> <span class="dv">45</span>, <span class="at">hjust =</span> <span class="dv">1</span>), <span class="at">panel.grid.minor =</span> <span class="fu">element_blank</span>())</span>
-<span id="cb132-26"><a href="#cb132-26" aria-hidden="true" tabindex="-1"></a><span class="co">#  # Rozumné limity osy y</span></span>
-<span id="cb132-27"><a href="#cb132-27" aria-hidden="true" tabindex="-1"></a><span class="co">#  + coord_cartesian(ylim = c(0, max(c(historical_values, #pred_func_clean, pred_sarima, pred_arimax_clean), na.rm = TRUE) * #1.1))</span></span>
-<span id="cb132-28"><a href="#cb132-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb132-29"><a href="#cb132-29" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(prediction_plot)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb134"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb134-1"><a href="#cb134-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Vylepšený graf predikcí</span></span>
+<span id="cb134-2"><a href="#cb134-2" aria-hidden="true" tabindex="-1"></a>prediction_plot <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(plot_data_clean, <span class="fu">aes</span>(<span class="at">x =</span> date)) <span class="sc">+</span></span>
+<span id="cb134-3"><a href="#cb134-3" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Historická data - body a čáry</span></span>
+<span id="cb134-4"><a href="#cb134-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> actual), <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">size =</span> <span class="dv">1</span>, <span class="at">alpha =</span> <span class="fl">0.8</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
+<span id="cb134-5"><a href="#cb134-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">y =</span> actual), <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">size =</span> <span class="fl">1.2</span>, <span class="at">alpha =</span> <span class="fl">0.7</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
+<span id="cb134-6"><a href="#cb134-6" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Funkční model</span></span>
+<span id="cb134-7"><a href="#cb134-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> func_pred), <span class="at">color =</span> <span class="st">"red"</span>, <span class="at">size =</span> <span class="dv">1</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
+<span id="cb134-8"><a href="#cb134-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">y =</span> func_pred), <span class="at">color =</span> <span class="st">"red"</span>, <span class="at">size =</span> <span class="fl">1.2</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
+<span id="cb134-9"><a href="#cb134-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> func_lower, <span class="at">ymax =</span> func_upper), <span class="at">fill =</span> <span class="st">"red"</span>, <span class="at">alpha =</span> <span class="fl">0.2</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
+<span id="cb134-10"><a href="#cb134-10" aria-hidden="true" tabindex="-1"></a>  <span class="co"># SARIMA model</span></span>
+<span id="cb134-11"><a href="#cb134-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> sarima_pred), <span class="at">color =</span> <span class="st">"blue"</span>, <span class="at">size =</span> <span class="dv">1</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
+<span id="cb134-12"><a href="#cb134-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">y =</span> sarima_pred), <span class="at">color =</span> <span class="st">"blue"</span>, <span class="at">size =</span> <span class="fl">1.2</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
+<span id="cb134-13"><a href="#cb134-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> sarima_lower, <span class="at">ymax =</span> sarima_upper), <span class="at">fill =</span> <span class="st">"blue"</span>, <span class="at">alpha =</span> <span class="fl">0.2</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
+<span id="cb134-14"><a href="#cb134-14" aria-hidden="true" tabindex="-1"></a>  <span class="co"># ARIMAX model</span></span>
+<span id="cb134-15"><a href="#cb134-15" aria-hidden="true" tabindex="-1"></a>  <span class="co">#geom_line(aes(y = arimax_pred), color = "green", size = 1, na.rm = TRUE) +</span></span>
+<span id="cb134-16"><a href="#cb134-16" aria-hidden="true" tabindex="-1"></a>  <span class="co">#geom_point(aes(y = arimax_pred), color = "green", size = 1.2, na.rm = TRUE) +</span></span>
+<span id="cb134-17"><a href="#cb134-17" aria-hidden="true" tabindex="-1"></a>  <span class="co">#geom_ribbon(aes(ymin = arimax_lower, ymax = arimax_upper), fill = "green", alpha = 0.2, na.rm = TRUE) +</span></span>
+<span id="cb134-18"><a href="#cb134-18" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Vertikální čára oddělující historii od predikcí</span></span>
+<span id="cb134-19"><a href="#cb134-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">max</span>(historical_dates), <span class="at">linetype =</span> <span class="st">"dashed"</span>, <span class="at">alpha =</span> <span class="fl">0.7</span>, <span class="at">color =</span> <span class="st">"gray50"</span>, <span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb134-20"><a href="#cb134-20" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Lepší popisky a téma</span></span>
+<span id="cb134-21"><a href="#cb134-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Predikce týdenních nových případů - srovnání modelů"</span>, <span class="at">x =</span> <span class="st">"Datum"</span>, <span class="at">y =</span> <span class="st">"Počet případů (týdně)"</span>,</span>
+<span id="cb134-22"><a href="#cb134-22" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="fu">paste</span>(<span class="st">"Historická data (černá) | Predikce: Funkční (červená), SARIMA (modrá)"</span>, <span class="st">"</span><span class="sc">\n</span><span class="st">Přerušovaná čára označuje konec historických dat"</span>)) <span class="sc">+</span></span>
+<span id="cb134-23"><a href="#cb134-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb134-24"><a href="#cb134-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>, <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">14</span>, <span class="at">hjust =</span> <span class="fl">0.5</span>, <span class="at">face =</span> <span class="st">"bold"</span>), <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">11</span>, <span class="at">hjust =</span> <span class="fl">0.5</span>),</span>
+<span id="cb134-25"><a href="#cb134-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">angle =</span> <span class="dv">45</span>, <span class="at">hjust =</span> <span class="dv">1</span>), <span class="at">panel.grid.minor =</span> <span class="fu">element_blank</span>())</span>
+<span id="cb134-26"><a href="#cb134-26" aria-hidden="true" tabindex="-1"></a><span class="co">#  # Rozumné limity osy y</span></span>
+<span id="cb134-27"><a href="#cb134-27" aria-hidden="true" tabindex="-1"></a><span class="co">#  + coord_cartesian(ylim = c(0, max(c(historical_values, #pred_func_clean, pred_sarima, pred_arimax_clean), na.rm = TRUE) * #1.1))</span></span>
+<span id="cb134-28"><a href="#cb134-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb134-29"><a href="#cb134-29" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(prediction_plot <span class="sc">+</span> <span class="fu">ylim</span>(<span class="dv">0</span>, <span class="dv">2000000</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
@@ -1162,31 +1192,31 @@ Kontrola časové řady pro predikci:</code></pre>
 </figure>
 </div>
 </div>
-<div class="sourceCode cell-code" id="cb133"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb133-1"><a href="#cb133-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Číselný souhrn predikcí</span></span>
-<span id="cb133-2"><a href="#cb133-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">=== ČÍSELNÉ PREDIKCE (měsíční hodnoty) ===</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb135"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb135-1"><a href="#cb135-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Číselný souhrn predikcí</span></span>
+<span id="cb135-2"><a href="#cb135-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">=== ČÍSELNÉ PREDIKCE (měsíční hodnoty) ===</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>
 === ČÍSELNÉ PREDIKCE (měsíční hodnoty) ===</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb135"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb135-1"><a href="#cb135-1" aria-hidden="true" tabindex="-1"></a>predictions_summary <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(Měsíc <span class="ot">=</span> future_dates, Funkční <span class="ot">=</span> <span class="fu">round</span>(pred_func_clean, <span class="dv">0</span>), <span class="at">SARIMA =</span> <span class="fu">round</span>(pred_sarima_clean, <span class="dv">0</span>), <span class="at">ARIMAX =</span> <span class="fu">round</span>(pred_arimax_clean, <span class="dv">0</span>))</span>
-<span id="cb135-2"><a href="#cb135-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb135-3"><a href="#cb135-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="st">"Predikce na příštích 10 měsíců:"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb137"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb137-1"><a href="#cb137-1" aria-hidden="true" tabindex="-1"></a>predictions_summary <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(Měsíc <span class="ot">=</span> future_dates, Funkční <span class="ot">=</span> <span class="fu">round</span>(pred_func_clean, <span class="dv">0</span>), <span class="at">SARIMA =</span> <span class="fu">round</span>(pred_sarima_clean, <span class="dv">0</span>), <span class="at">ARIMAX =</span> <span class="fu">round</span>(pred_arimax_clean, <span class="dv">0</span>))</span>
+<span id="cb137-2"><a href="#cb137-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb137-3"><a href="#cb137-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="st">"Predikce na příštích 10 měsíců:"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] "Predikce na příštích 10 měsíců:"</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb137"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb137-1"><a href="#cb137-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(predictions_summary)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb139"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb139-1"><a href="#cb139-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(predictions_summary)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>        Měsíc Funkční SARIMA ARIMAX
-1  2024-08-11      10     12     16
-2  2024-08-18      10     12     16
-3  2024-08-25      10     12     16
-4  2024-09-01      10     12     16
-5  2024-09-08      10     12     16
-6  2024-09-15      10     12     16
-7  2024-09-22      10     12     15
-8  2024-09-29      10     12     15
-9  2024-10-06       9     12     15
-10 2024-10-13       9     12     15</code></pre>
+<pre><code>        Měsíc Funkční SARIMA  ARIMAX
+1  2024-08-11   32825 211838 5401180
+2  2024-08-18   29324 193294 5423954
+3  2024-08-25   26129 194763 5817708
+4  2024-09-01   23225 203837 6116011
+5  2024-09-08   20596 209266 6086557
+6  2024-09-15   18224 219676 5768257
+7  2024-09-22   16093 221152 5331853
+8  2024-09-29   14185 222160 4917604
+9  2024-10-06   12482 221498 4582099
+10 2024-10-13   10968 220466 4321477</code></pre>
 </div>
 </div>
 <p>V tomto modelu nejsou vidět všechny, protože jsou vykresleny na stejném místě.</p>
@@ -1196,26 +1226,26 @@ Kontrola časové řady pro predikci:</code></pre>
 <h2 class="anchored" data-anchor-id="závěrečné-srovnání-a-doporučení">Závěrečné srovnání a doporučení</h2>
 <p>Zhodnocení všech testovaných přístupů a formulace doporučení pro praxi.</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb139"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb139-1"><a href="#cb139-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Finální srovnání všech modelů</span></span>
-<span id="cb139-2"><a href="#cb139-2" aria-hidden="true" tabindex="-1"></a>final_comparison <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
-<span id="cb139-3"><a href="#cb139-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">Model =</span> <span class="fu">c</span>(<span class="st">"Funkční (trend+sezónost)"</span>, <span class="st">"SARIMA"</span>, <span class="st">"ARIMAX"</span>),</span>
-<span id="cb139-4"><a href="#cb139-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">AIC =</span> <span class="fu">c</span>(<span class="fu">AIC</span>(best_func_model), <span class="fu">AIC</span>(final_sarima), <span class="fu">AIC</span>(arimax_model)),</span>
-<span id="cb139-5"><a href="#cb139-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">BIC =</span> <span class="fu">c</span>(<span class="fu">BIC</span>(best_func_model), <span class="fu">BIC</span>(final_sarima), <span class="fu">BIC</span>(arimax_model)),</span>
-<span id="cb139-6"><a href="#cb139-6" aria-hidden="true" tabindex="-1"></a>  Parametrů <span class="ot">=</span> <span class="fu">c</span>(<span class="fu">length</span>(<span class="fu">coef</span>(best_func_model)), </span>
-<span id="cb139-7"><a href="#cb139-7" aria-hidden="true" tabindex="-1"></a>                <span class="fu">length</span>(<span class="fu">coef</span>(final_sarima)),</span>
-<span id="cb139-8"><a href="#cb139-8" aria-hidden="true" tabindex="-1"></a>                <span class="fu">length</span>(<span class="fu">coef</span>(arimax_model))),</span>
-<span id="cb139-9"><a href="#cb139-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">RMSE =</span> <span class="fu">c</span>(</span>
-<span id="cb139-10"><a href="#cb139-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sqrt</span>(<span class="fu">mean</span>(<span class="fu">residuals</span>(best_func_model)<span class="sc">^</span><span class="dv">2</span>)),</span>
-<span id="cb139-11"><a href="#cb139-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sqrt</span>(<span class="fu">mean</span>(<span class="fu">residuals</span>(final_sarima)<span class="sc">^</span><span class="dv">2</span>)),</span>
-<span id="cb139-12"><a href="#cb139-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sqrt</span>(<span class="fu">mean</span>(<span class="fu">residuals</span>(arimax_model)<span class="sc">^</span><span class="dv">2</span>))</span>
-<span id="cb139-13"><a href="#cb139-13" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb139-14"><a href="#cb139-14" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb139-15"><a href="#cb139-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb139-16"><a href="#cb139-16" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="st">"Finální srovnání modelů:"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb141"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb141-1"><a href="#cb141-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Finální srovnání všech modelů</span></span>
+<span id="cb141-2"><a href="#cb141-2" aria-hidden="true" tabindex="-1"></a>final_comparison <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb141-3"><a href="#cb141-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">Model =</span> <span class="fu">c</span>(<span class="st">"Funkční (trend+sezónost)"</span>, <span class="st">"SARIMA"</span>, <span class="st">"ARIMAX"</span>),</span>
+<span id="cb141-4"><a href="#cb141-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">AIC =</span> <span class="fu">c</span>(<span class="fu">AIC</span>(best_func_model), <span class="fu">AIC</span>(final_sarima), <span class="fu">AIC</span>(arimax_model)),</span>
+<span id="cb141-5"><a href="#cb141-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">BIC =</span> <span class="fu">c</span>(<span class="fu">BIC</span>(best_func_model), <span class="fu">BIC</span>(final_sarima), <span class="fu">BIC</span>(arimax_model)),</span>
+<span id="cb141-6"><a href="#cb141-6" aria-hidden="true" tabindex="-1"></a>  Parametrů <span class="ot">=</span> <span class="fu">c</span>(<span class="fu">length</span>(<span class="fu">coef</span>(best_func_model)), </span>
+<span id="cb141-7"><a href="#cb141-7" aria-hidden="true" tabindex="-1"></a>                <span class="fu">length</span>(<span class="fu">coef</span>(final_sarima)),</span>
+<span id="cb141-8"><a href="#cb141-8" aria-hidden="true" tabindex="-1"></a>                <span class="fu">length</span>(<span class="fu">coef</span>(arimax_model))),</span>
+<span id="cb141-9"><a href="#cb141-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">RMSE =</span> <span class="fu">c</span>(</span>
+<span id="cb141-10"><a href="#cb141-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sqrt</span>(<span class="fu">mean</span>(<span class="fu">residuals</span>(best_func_model)<span class="sc">^</span><span class="dv">2</span>)),</span>
+<span id="cb141-11"><a href="#cb141-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sqrt</span>(<span class="fu">mean</span>(<span class="fu">residuals</span>(final_sarima)<span class="sc">^</span><span class="dv">2</span>)),</span>
+<span id="cb141-12"><a href="#cb141-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sqrt</span>(<span class="fu">mean</span>(<span class="fu">residuals</span>(arimax_model)<span class="sc">^</span><span class="dv">2</span>))</span>
+<span id="cb141-13"><a href="#cb141-13" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb141-14"><a href="#cb141-14" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb141-15"><a href="#cb141-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb141-16"><a href="#cb141-16" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="st">"Finální srovnání modelů:"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] "Finální srovnání modelů:"</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb141"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb141-1"><a href="#cb141-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(final_comparison)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb143"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb143-1"><a href="#cb143-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(final_comparison)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>                     Model       AIC       BIC Parametrů      RMSE
 1 Funkční (trend+sezónost)  796.9181  817.8019         5 1.2414840
@@ -1226,28 +1256,29 @@ Kontrola časové řady pro predikci:</code></pre>
 <p>ARIMAX vyšel jako statisticky nejlepší. SARIMA je dobrý kompromis. Funkční je nejhorší fit. ale interpretovatelná.</p>
 <p><strong>Cross-korelační analýza - klíčové zjištění:</strong></p>
 <ul>
-<li>new_deaths vs new_cases - Silná pozitivní korelace s lag -1 až +1 → úmrtí následují případy s krátkou prodlevou</li>
+<li>new_deaths vs new_cases - Silná pozitivní korelace s lag -1 až +1 → Úmrtí následují případy s krátkou prodlevou.</li>
 </ul>
 <!-- -->
 <ul>
-<li>hosp_patients - Dobrý prediktor na lag 0 a +1 → hospitalizace korelují s trenutními a budoucími případy</li>
+<li>hosp_patients - Dobrý prediktor na lag 0 a +1 → Hospitalizace korelují s trendy a budoucími případy.</li>
 </ul>
 <!-- -->
 <ul>
-<li>stringency_index - Slabá negativní korelace → vládní opatření mají omezený okamžitý účinek</li>
+<li>stringency_index - Slabá negativní korelace → Vládní opatření mají omezený okamžitý účinek.</li>
 </ul>
 <p><strong>Shrnutí predikcí (transformováno z log-škály):</strong></p>
 <p>Všechny tři modely predikují pokles nebo stabilizaci nových případů.</p>
 <ul>
-<li><p>Funkční mode - ~10 případů týdně (pravděpodobně podhodnoceno)</p></li>
-<li><p>SARIMA: ~12 případů týdně (konzervativní odhad)</p></li>
-<li><p>ARIMAX: ~15-16 případů týdně (nejvyšší, zahrnuje externí faktory)</p></li>
+<li><p>Funkční model - ~20 000 případů týdně (pravděpodobně podhodnoceno)</p></li>
+<li><p>SARIMA: ~200 000 případů týdně (konzervativní odhad)</p></li>
+<li><p>ARIMAX: ~5 000 000 případů týdně (nejvyšší, zahrnuje externí faktory)</p></li>
 </ul>
 <p><strong>Hlavní problémy s predikcí:</strong></p>
 <ul>
-<li><p>Extrapolace externích proměnných - ARIMAX model předpokládá konstantní hodnoty hospitalizací, mortality a přísnosti opatření</p></li>
-<li><p>Strukturální změny - COVID-19 data obsahují strukturální zlomy (nové varianty, vakcinace), které modely nezachycují</p></li>
-<li><p>Krátký horizont - 10 období vpřed je rozumné, ale nejistota rychle roste Sezónní predikce: Model předpokládá pokračování historických sezónních vzorců</p></li>
+<li><p>Extrapolace externích proměnných - ARIMAX model předpokládá konstantní hodnoty hospitalizací, mortality a přísnosti opatření.</p></li>
+<li><p>Strukturální změny - COVID-19 data obsahují strukturální zlomy (nové varianty, vakcinace), které modely nezachycují.</p></li>
+<li><p>Krátký horizont - 10 období vpřed je rozumné, ale nejistota rychle roste.</p></li>
+<li><p>Sezónní predikce - Model předpokládá pokračování historických sezónních vzorců.</p></li>
 </ul>
 </section>
 <section id="závěr" class="level2">

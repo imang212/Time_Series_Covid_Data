@@ -163,7 +163,7 @@ Nejdřív se zkontrolovalo, jestli nejsou chybějící hodnoty ve sloupcích, kt
 ```{r}
 start_year <- min(monthly_data$year)
 #start_month <- min(monthly_data$month[monthly_data$year == start_year])
-start_week <- min(data$week[data$year == start_year])
+start_week <- min(data$week[data$year == start_year]+1)
 
 ts_data <- ts(data$new_cases, start = c(start_year, start_week), frequency = 52.18)
 
@@ -525,7 +525,7 @@ external_vars <- cbind(
 
 # Odstranění NA hodnot
 complete_idx <- complete.cases(cbind(data$new_cases, external_vars))
-ts_complete <- ts(log1p(data$new_cases[complete_idx]), start = c(start_year, start_week), frequency = 52)
+ts_complete <- ts(log1p(data$new_cases[complete_idx]), start = c(start_year, start_week), frequency = 52.18)
 external_complete <- external_vars[complete_idx, ]
 
 # ARIMAX model
@@ -632,6 +632,11 @@ future_data <- data.frame(
 )
 # Jednoduchá predikce bez složitého rozlišování modelů
 pred_func <- predict(best_func_model, newdata = future_data, interval = "prediction")
+
+# zpět na původní škálu
+pred_func <- expm1(pred_func)
+
+
 cat("Funkční model - predikce dokončena\n")
 # SARIMA predikce
 if(is.null(final_sarima) || any(is.na(coef(final_sarima)))) {
@@ -646,6 +651,12 @@ if(is.null(final_sarima) || any(is.na(coef(final_sarima)))) {
 }
 
 pred_sarima <- forecast(final_sarima, h = horizon)
+autoplot(pred_sarima)
+## zpětný převod na původní škálu
+pred_sarima$mean  <- expm1(pred_sarima$mean)
+pred_sarima$lower <- expm1(pred_sarima$lower)
+pred_sarima$upper <- expm1(pred_sarima$upper)
+
 cat("SARIMA predikce dokončena\n")
 
 # ARIMAX predikce (potřebujeme budoucí hodnoty externích proměnných)
@@ -659,8 +670,17 @@ colnames(future_external) <- colnames(external_complete)
 cat("Názvy sloupců v trénovacích datech:", colnames(external_complete), "\n")
 cat("Názvy sloupců v predikčních datech:", colnames(future_external), "\n")
 pred_arimax = forecast(arimax_model, xreg = future_external, h = horizon)
+autoplot(pred_arimax)
+
+# zpět na původní škálu
+pred_arimax$mean  <- expm1(pred_arimax$mean)
+pred_arimax$lower <- expm1(pred_arimax$lower)
+pred_arimax$upper <- expm1(pred_arimax$upper)
+
 cat("ARIMAX predikce dokončena\n")
 ```
+
+![](http://127.0.0.1:20303/chunk_output/s/B26260BB/cll3y3e8jgixb/00001c.png)
 
 #### Grafické srovnání a hodnocení modelů
 
@@ -701,12 +721,13 @@ historical_values <- tail(data$new_cases, last_n_obs)
 pred_func_clean <- pred_func[,1] 
 pred_func_lower <- pred_func[,2] 
 pred_func_upper <- pred_func[,3] 
-pred_sarima_clean <- as.numeric(pred_sarima$mean) 
-pred_sarima_lower <- as.numeric(pred_sarima$lower[,2]) 
-pred_sarima_upper <- as.numeric(pred_sarima$upper[,2]) 
-pred_arimax_clean <- as.numeric(pred_arimax$mean) 
-pred_arimax_lower <- as.numeric(pred_arimax$lower[,2]) 
-pred_arimax_upper <- as.numeric(pred_arimax$upper[,2]) 
+pred_sarima_clean <- pred_sarima$mean
+pred_sarima_lower <- pred_sarima$lower[,2]
+pred_sarima_upper <- pred_sarima$upper[,2]
+pred_arimax_clean <- pred_arimax$mean
+pred_arimax_lower <- pred_arimax$lower[,2]
+pred_arimax_upper <- pred_arimax$upper[,2]
+
 # Náhrada NA hodnotami z SARIMA predikce pokud je potřeba 
 if(any(is.na(pred_func_clean))) { 
   cat("Opravuji NA v funkčních predikcích\n") 
@@ -719,17 +740,14 @@ if(any(is.na(pred_func_clean))) {
 plot_data_clean <- data.frame(
   date = c(historical_dates, future_dates),
   actual = c(historical_values, rep(NA, horizon)),
-  
   # Funkční model
-  func_pred = c(rep(NA, last_n_obs), pred_func_clean),
-  func_lower = c(rep(NA, last_n_obs), pred_func_lower),
-  func_upper = c(rep(NA, last_n_obs), pred_func_upper),
-  
+  func_pred = c(rep(NA, last_n_obs), as.numeric(pred_func_clean)),
+  func_lower = c(rep(NA, last_n_obs), as.numeric(pred_func_lower)),
+  func_upper = c(rep(NA, last_n_obs), as.numeric(pred_func_upper)),
   # SARIMA model  
   sarima_pred = c(rep(NA, last_n_obs), as.numeric(pred_sarima$mean)),
   sarima_lower = c(rep(NA, last_n_obs), as.numeric(pred_sarima$lower[,2])),
   sarima_upper = c(rep(NA, last_n_obs), as.numeric(pred_sarima$upper[,2])),
-  
   # ARIMAX model
   arimax_pred = c(rep(NA, last_n_obs), as.numeric(pred_arimax$mean)),
   arimax_lower = c(rep(NA, last_n_obs), as.numeric(pred_arimax$lower[,2])),
@@ -764,21 +782,21 @@ prediction_plot <- ggplot(plot_data_clean, aes(x = date)) +
   geom_point(aes(y = sarima_pred), color = "blue", size = 1.2, na.rm = TRUE) +
   geom_ribbon(aes(ymin = sarima_lower, ymax = sarima_upper), fill = "blue", alpha = 0.2, na.rm = TRUE) +
   # ARIMAX model
-  geom_line(aes(y = arimax_pred), color = "green", size = 1, na.rm = TRUE) +
-  geom_point(aes(y = arimax_pred), color = "green", size = 1.2, na.rm = TRUE) +
-  geom_ribbon(aes(ymin = arimax_lower, ymax = arimax_upper), fill = "green", alpha = 0.2, na.rm = TRUE) +
+  #geom_line(aes(y = arimax_pred), color = "green", size = 1, na.rm = TRUE) +
+  #geom_point(aes(y = arimax_pred), color = "green", size = 1.2, na.rm = TRUE) +
+  #geom_ribbon(aes(ymin = arimax_lower, ymax = arimax_upper), fill = "green", alpha = 0.2, na.rm = TRUE) +
   # Vertikální čára oddělující historii od predikcí
   geom_vline(xintercept = max(historical_dates), linetype = "dashed", alpha = 0.7, color = "gray50", size = 1) +
   # Lepší popisky a téma
-  labs(title = "Predikce týdenních nových případů - srovnání modelů", x = "Datum", y = "Počet případů (měsíčně)",
-       subtitle = paste("Historická data (černá) | Predikce: Funkční (červená), SARIMA (modrá), ARIMAX (zelená)", "\nPřerušovaná čára označuje konec historických dat")) +
+  labs(title = "Predikce týdenních nových případů - srovnání modelů", x = "Datum", y = "Počet případů (týdně)",
+       subtitle = paste("Historická data (černá) | Predikce: Funkční (červená), SARIMA (modrá)", "\nPřerušovaná čára označuje konec historických dat")) +
   theme_minimal() +
   theme(legend.position = "none", plot.title = element_text(size = 14, hjust = 0.5, face = "bold"), plot.subtitle = element_text(size = 11, hjust = 0.5),
     axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank())
 #  # Rozumné limity osy y
 #  + coord_cartesian(ylim = c(0, max(c(historical_values, #pred_func_clean, pred_sarima, pred_arimax_clean), na.rm = TRUE) * #1.1))
 
-print(prediction_plot)
+print(prediction_plot + ylim(0, 2000000))
 
 # Číselný souhrn predikcí
 cat("\n=== ČÍSELNÉ PREDIKCE (měsíční hodnoty) ===\n")
@@ -818,33 +836,35 @@ ARIMAX vyšel jako statisticky nejlepší. SARIMA je dobrý kompromis. Funkční
 
 **Cross-korelační analýza - klíčové zjištění:**
 
--   new_deaths vs new_cases - Silná pozitivní korelace s lag -1 až +1 → úmrtí následují případy s krátkou prodlevou
+-   new_deaths vs new_cases - Silná pozitivní korelace s lag -1 až +1 → Úmrtí následují případy s krátkou prodlevou.
 
 <!-- -->
 
--   hosp_patients - Dobrý prediktor na lag 0 a +1 → hospitalizace korelují s trenutními a budoucími případy
+-   hosp_patients - Dobrý prediktor na lag 0 a +1 → Hospitalizace korelují s trendy a budoucími případy.
 
 <!-- -->
 
--   stringency_index - Slabá negativní korelace → vládní opatření mají omezený okamžitý účinek
+-   stringency_index - Slabá negativní korelace → Vládní opatření mají omezený okamžitý účinek.
 
 **Shrnutí predikcí (transformováno z log-škály):**
 
 Všechny tři modely predikují pokles nebo stabilizaci nových případů.
 
--   Funkční mode - \~10 případů týdně (pravděpodobně podhodnoceno)
+-   Funkční model - \~20 000 případů týdně (pravděpodobně podhodnoceno)
 
--   SARIMA: \~12 případů týdně (konzervativní odhad)
+-   SARIMA: \~200 000 případů týdně (konzervativní odhad)
 
--   ARIMAX: \~15-16 případů týdně (nejvyšší, zahrnuje externí faktory)
+-   ARIMAX: \~5 000 000 případů týdně (nejvyšší, zahrnuje externí faktory)
 
 **Hlavní problémy s predikcí:**
 
--   Extrapolace externích proměnných - ARIMAX model předpokládá konstantní hodnoty hospitalizací, mortality a přísnosti opatření
+-   Extrapolace externích proměnných - ARIMAX model předpokládá konstantní hodnoty hospitalizací, mortality a přísnosti opatření.
 
--   Strukturální změny - COVID-19 data obsahují strukturální zlomy (nové varianty, vakcinace), které modely nezachycují
+-   Strukturální změny - COVID-19 data obsahují strukturální zlomy (nové varianty, vakcinace), které modely nezachycují.
 
--   Krátký horizont - 10 období vpřed je rozumné, ale nejistota rychle roste Sezónní predikce: Model předpokládá pokračování historických sezónních vzorců
+-   Krátký horizont - 10 období vpřed je rozumné, ale nejistota rychle roste.
+
+-   Sezónní predikce - Model předpokládá pokračování historických sezónních vzorců.
 
 ## Závěr
 
