@@ -150,7 +150,15 @@ cat("Data začínají od: ",as.numeric(format(min(data$date), "%d")) , as.numeri
 cat("Data končí: ", as.numeric(format(max(data$date), "%d")), as.numeric(format(max(data$date), "%m")),as.numeric(format(max(data$date), "%Y")))
 ```
 
-Nejdřív než se data převedli na časovou řadu, zkontrolovalo se, jestli nejsou chybějící hodnoty ve sloupcích, které se budou analyzovat. Zkontrovalo se, jestli nejsou v datech mezery, kolik mají pozorování a jaký je v nich rozsah hodnot.
+Nejdřív se zkontrolovalo, jestli nejsou chybějící hodnoty ve sloupcích, které by mohly dělat problém při analýze. Zkontrovalo se, jestli nejsou v datech mezery, kolik mají pozorování a jaký je v nich rozsah hodnot. Potom se udělala agregace na měsíční a týdenní součty. Použijeme týdenní agregaci.
+
+**Proč týdenní agregace?:**
+
+-   Eliminuje víkendové efekty v hlášení případů.
+
+-   Snižuje šum v datech způsobený administrativními procesy.
+
+-   Zachovává sezónní vzorce, ale redukuje krátkodobé fluktuace.
 
 ```{r}
 start_year <- min(monthly_data$year)
@@ -169,6 +177,8 @@ tail(ts_data, 20)
 Vytvořili jsme časovou řadu s týdenní frekvencí.
 
 ## Grafické zobrazení řady
+
+Zobrazíme hlavní řadu pomocí týdenních dat a boxplot graf podle měsíčních dat pro identifikaci sezónnosti.
 
 ```{r}
 # Grafické zobrazení hlavní řady
@@ -196,12 +206,27 @@ grid.arrange(p1, p2, ncol = 1)
 
 ## Dekompozice a identifikace trendu
 
-#### Dekompozice časové řady
-
-Dekompozice umožňuje pochopit strukturu dat, identifikuje sílu trendové vs. sezónní složky a pomáhá při výběru vhodného typu modelu (aditivní vs. multiplikativní). STL dekompozice je robustní, flexibilní metoda vhodná pro dlouhé časové řady.
+#### Logaritmická transformace
 
 ```{r}
 ts_log <- log1p(ts_data)  # log stabilizace
+```
+
+**Důvody:**
+
+-   Stabilizuje varianci (heteroskedasticita)
+
+-   Lineární trendy se stávají exponenciálními ve skutečných datech
+
+-   Zlepšuje normalitu reziduí
+
+#### Dekompozice časové řady
+
+Dekompozice umožňuje pochopit strukturu dat, identifikuje sílu trendové vs. sezónní složky a pomáhá při výběru vhodného typu modelu (aditivní vs. multiplikativní).
+
+STL dekompozice je robustní vůči sezónním hodnotám, zvládá změny v sezónních vzorcích a umožňuje flexibilní nastavení trend vs. sezónní komponenty.
+
+```{r}
 # STL dekompozice
 stl_decomp <- stl(ts_log, s.window = "periodic", t.window = NULL, robust = TRUE)
 plot(stl_decomp, main = "STL dekompozice časové řady nových případů")
@@ -209,9 +234,9 @@ plot(stl_decomp, main = "STL dekompozice časové řady nových případů")
 
 #### Identifikace trendu pomocí vyhlazení
 
--   MA(4): Měsíční vyhlazení - zobrazí střednědobé trendy
--   MA(52): Roční vyhlazení - zachytí dlouhodobý trend
--   Exponenciální vyhlazení: Dává vyšší váhu novějším pozorováním, vhodné pro predikci
+-   MA(4): Měsíční vyhlazení - Zobrazí střednědobé trendy.
+-   MA(52): Roční vyhlazení - Zachytí dlouhodobý trend.
+-   Exponenciální vyhlazení - Dává vyšší váhu novějším pozorováním, vhodné pro predikci.
 
 Výsledky říkají, která metoda nejlépe zachycuje základní trend, jak silné jsou krátkodobé vs. dlouhodobé fluktuace, zda je trend stabilní nebo se mění v čase.
 
@@ -483,7 +508,7 @@ for(series in names(ccf_results)) {
 
 ## Optimální model s externími regresory (ARIMAX model)
 
-Kombinace časové dynamiky ARIMA s vlivem externích faktorů. Arimax model zachycuje autokorelaci v datech a současně modeluje vliv dalších proměnných. VAR model místo jednosměrného vztahu (X → Y) modelujeme vzájemné ovlivnění všech proměnných.
+Kombinace časové dynamiky ARIMA s vlivem externích faktorů. Arimax model zachycuje autokorelaci v datech a současně modeluje vliv dalších proměnných.
 
 ```{r}
 # Příprava zpožděných proměnných na základě CCF analýzy
@@ -525,13 +550,13 @@ ARIMAX model kombinuje autoregresní chování s vlivem externích proměnných.
 
 Zde ověříme, zda naše modely splňují předpoklady, jako je nezávislost reziduí, heteroskedasticita (konstantní rozptyl), normalita reziduí a Ljung-Box test.
 
-Při porušení předpokladů se dělá:
+**Při porušení předpokladů se dělá:**
 
--   Autokorelace: Zvýšení řádu ARIMA modelu.
+-   Autokorelace - Zvýšení řádu ARIMA modelu.
 
--   Nenormalita: Transformace dat nebo robustní metody.
+-   Nenormalita - Transformace dat nebo robustní metody.
 
--   Heteroskedasticita: GARCH modely nebo weighted regression.
+-   Heteroskedasticita - GARCH modely nebo weighted regression.
 
 ```{r}
 # Diagnostika residuí pro všechny modely
@@ -763,7 +788,7 @@ print("Predikce na příštích 10 měsíců:")
 print(predictions_summary)
 ```
 
-Srovnání ukazuje rozdíly mezi jednotlivými přístupy. SARIMA model ukazuje nejlepší výsledek.
+V tomto modelu nejsou vidět všechny, protože jsou vykresleny na stejném místě.
 
 ## Závěrečné srovnání a doporučení
 
@@ -788,3 +813,75 @@ final_comparison <- data.frame(
 print("Finální srovnání modelů:")
 print(final_comparison)
 ```
+
+ARIMAX vyšel jako statisticky nejlepší. SARIMA je dobrý kompromis. Funkční je nejhorší fit. ale interpretovatelná.
+
+**Cross-korelační analýza - klíčové zjištění:**
+
+-   new_deaths vs new_cases - Silná pozitivní korelace s lag -1 až +1 → úmrtí následují případy s krátkou prodlevou
+
+<!-- -->
+
+-   hosp_patients - Dobrý prediktor na lag 0 a +1 → hospitalizace korelují s trenutními a budoucími případy
+
+<!-- -->
+
+-   stringency_index - Slabá negativní korelace → vládní opatření mají omezený okamžitý účinek
+
+**Shrnutí predikcí (transformováno z log-škály):**
+
+Všechny tři modely predikují pokles nebo stabilizaci nových případů.
+
+-   Funkční mode - \~10 případů týdně (pravděpodobně podhodnoceno)
+
+-   SARIMA: \~12 případů týdně (konzervativní odhad)
+
+-   ARIMAX: \~15-16 případů týdně (nejvyšší, zahrnuje externí faktory)
+
+**Hlavní problémy s predikcí:**
+
+-   Extrapolace externích proměnných - ARIMAX model předpokládá konstantní hodnoty hospitalizací, mortality a přísnosti opatření
+
+-   Strukturální změny - COVID-19 data obsahují strukturální zlomy (nové varianty, vakcinace), které modely nezachycují
+
+-   Krátký horizont - 10 období vpřed je rozumné, ale nejistota rychle roste Sezónní predikce: Model předpokládá pokračování historických sezónních vzorců
+
+## Závěr
+
+**Hlavní závěry analýzy:**
+
+-   Metodická kvalita - Analýza používá správné statistické metody a postupuje systematicky od EDA k predikci.
+
+-   Model selection - ARIMAX model dosahuje nejlepší statistické výsledky (AIC = -124.4), ale jeho praktická použitelnost je omezena.
+
+-   Sezónnost - Data vykazují jasné sezónní vzorce s vyšší incidencí v zimních měsících.
+
+-   Externí faktory - Hospitalizace jsou nejsilnějším prediktorem budoucích případů.
+
+**Doporučení pro praxi:**
+
+-   Krátkodobé predikce (1-4 týdny) - ARIMAX model s aktualizovanými externími proměnnými.
+
+-   Střednědobé (1-3 měsíce) - SARIMA model jako robustní baseline.
+
+-   Dlouhodobé (3+ měsíce) - Kombinace modelů s expertním posouzením.
+
+-   Monitoring - Pravidelná rekalibrce modelů při změnách v epidemiologické situaci.
+
+**Omezení a doporučení pro zlepšení:**
+
+-   Regimní změny - Implementovat modely s strukturálními zlomy (např. bcp, changepoint).
+
+-   Více externích dat - Zahrnout vakcinační pokrytí, mobilitu obyvatelstva, meteorologická data.
+
+-   Ensemble metody - Kombinovat predikce více modelů pro robustnost.
+
+-   Pravděpodobnostní predikce - Větší důraz na predikční intervaly než bodové odhady.
+
+-   Validace - Out-of-sample testování na držených datech.
+
+**Celkové hodnocení:**
+
+Analýza představuje solidní ukázku aplikace časových řad na epidemiologická data. Metodika je správná, postupy jsou transparentní a výsledky jsou interpretovatelné. Hlavní síla leží v systematickém srovnání různých přístupů a důkladné diagnostice modelů.
+
+Praktická hodnota - Výsledky lze použít pro krátkodobé plánování kapacit zdravotnictví, ale s opatrností a pravidelnou aktualizací při změnách v epidemiologické situaci.
