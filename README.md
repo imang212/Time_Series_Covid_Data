@@ -1,12 +1,12 @@
 # Time Series Analysis of COVID Data
 **The time series analysis consists of:**
-1.  Introduction and data loading\
-2.  Graphical visualization of the series\
-3.  Trend identification using smoothing\
-4.  Searching for the optimal functional model (AIC and BIC comparison)\
-5.  Searching for the optimal SARIMA model\
-6.  Analysis of dependencies on other time series\
-7.  Prediction of future values\
+1.  Introduction and data loading
+2.  Graphical visualization of the series
+3.  Trend identification using smoothing
+4.  Searching for the optimal functional model (AIC and BIC comparison)
+5.  Searching for the optimal SARIMA model
+6.  Analysis of dependencies on other time series
+7.  Prediction of future values
 8.  Final comparison and recommendations
 
 # Analýza časové řady na covid data
