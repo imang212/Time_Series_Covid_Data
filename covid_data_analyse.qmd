@@ -208,6 +208,8 @@ grid.arrange(p1, p2, ncol = 1)
 ts_log <- log1p(ts_data)  # log stabilizace
 ```
 
+Logaritmování se používá, když se v datech rozptyl (variabilita) zvětšuje s rostoucí úrovní řady (tzv. multiplikativní model).
+
 **Důvody:**
 
 -   Stabilizuje varianci (heteroskedasticita)
@@ -230,6 +232,8 @@ plot(stl_decomp, main = "STL dekompozice časové řady nových případů")
 
 Dekompozice potvrdila dominantní roční sezónnost s vrcholy v zimních měsících a útlumem v letním období, což je pro respirační onemocnění typické.
 
+V grafu dekompozice (část 'seasonal') je patrné, že řada vykazuje pravidelné cykly (např. týdenní nebo roční). Amplituda těchto výkyvů je \[malá/velká\] v poměru k celkovému trendu.
+
 #### Identifikace trendu pomocí vyhlazení
 
 -   MA(4): Měsíční vyhlazení - Zobrazí střednědobé trendy.
@@ -241,32 +245,24 @@ Výsledky říkají, která metoda nejlépe zachycuje základní trend, jak siln
 ```{r}
 start_week <- min(data$week[data$year == start_year])
 ts_weekly_data <- ts(data$new_cases, start = c(start_year, start_week), frequency = 52.18)
-
 # Klouzavé průměry různých řádů
 ma_4 <- SMA(data$new_cases, n = 4) 
 ma_52 <- SMA(data$new_cases, n = 52.18) 
-
 # Exponenciální vyrovnání - jednodušší přístup
 exp_smooth_model <- HoltWinters(ts_weekly_data, gamma = FALSE)
-
 # Vytvoříme jednoduché exponenciální vyhlazení pomocí ETS
 ets_model <- ets(ts_weekly_data, model = "AAN", damped = FALSE)
 exp_smooth_fitted <- fitted(ets_model)
-
 # Zajistíme stejnou délku (ETS vrací stejnou délku jako originální data)
 n_obs <- length(data$new_cases)
-
 # Pokud je exp_smooth_fitted kratší, doplníme NA na začátek
 if(length(exp_smooth_fitted) < n_obs) {
-  exp_smooth_full <- c(rep(NA, n_obs - length(exp_smooth_fitted)), 
-                       as.numeric(exp_smooth_fitted))
+  exp_smooth_full <- c(rep(NA, n_obs - length(exp_smooth_fitted)), as.numeric(exp_smooth_fitted))
 } else {
   exp_smooth_full <- as.numeric(exp_smooth_fitted[1:n_obs])
 }
-
 # Grafické srovnání - pouze metody, které máme
 trend_data <- data.frame(date = data$date, original = data$new_cases, ma_4 = ma_4, ma_52 = ma_52, exp_smooth = exp_smooth_full)
-
 # Přidáme exponenciální vyhlazení
 trend_data$exp_smooth <- exp_smooth_full
 
@@ -281,7 +277,6 @@ trend_plot <- trend_data %>%
   labs(title = "Srovnání metod vyhlazení trendu", x = "Datum", y = "Hodnota") +
   theme_minimal() +
   theme(legend.position = "bottom")
-
 print(trend_plot)
 
 # Analýza trendové složky
@@ -295,7 +290,15 @@ cat("\nSouhrn sezónní složky:\n")
 print(summary(seasonal_component))
 ```
 
-Stabilita: Trend v našem případě není stabilní; vykazuje několik výrazných vln, které odpovídají jednotlivým fázím pandemie. Metoda MA(52) nejlépe vyhlazuje sezónní šum a odhaluje dlouhodobý klesající směr v závěru sledovaného období.s
+Stabilita: Trend v našem případě není stabilní; vykazuje několik výrazných vln, které odpovídají jednotlivým fázím pandemie. Metoda MA(52) nejlépe vyhlazuje sezónní šum a odhaluje dlouhodobý klesající směr v závěru sledovaného období.
+
+-   **Klouzavé průměry (MA):** Jsou "těžkopádné", dávají stejnou váhu všem pozorováním v okně a nedokáží předpovídat trend.
+
+-   **Exponenciální vyrovnání (Holt-Winters):**
+
+    -   $\alpha$ (alfa): Parametr pro aktuální úroveň (level). Čím je vyšší (blíže 1), tím více model reaguje na poslední změny. Čím je nižší, tím je řada hladší (více průměruje historii).
+
+    -   $\beta$ (beta): Parametr pro trend. Určuje, jak rychle se má měnit odhad sklonu trendu na základě posledních dat.
 
 ## Hledání optimálního funkčního modelu (trend + sezónnost)
 
@@ -358,7 +361,9 @@ ggplot(data, aes(x = date)) +
 
 Nejlepší funkční model podle AIC je model s polynomiálním trendem a roční sezónností. Model vysvětluje značnou část variability dat.
 
-Vlny COVID-19 byly v tomto období více ovlivněny příchodem nových variant nebo vládními opatřeními než fixním kalendářním ročním cyklem, který tyto goniometrické funkce popisují. Rovnice modelu: $$\widehat{\ln}(1 + \text{new\_cases}_t) = 15,18 - 7,71 \cdot \text{poly}(t, 2)_1 - 27,64 \cdot \text{poly}(t, 2)_2 - 0,06 \cdot \sin\left(\frac{2\pi t}{365}\right) - 0,11 \cdot \cos\left(\frac{2\pi t}{365}\right)$$\
+Vlny COVID-19 byly v tomto období více ovlivněny příchodem nových variant nebo vládními opatřeními než fixním kalendářním ročním cyklem, který tyto goniometrické funkce popisují. Rovnice modelu:
+
+$$\widehat{\ln}(1 + \text{new\_cases}_t) = 15,18 - 7,71 \cdot \text{poly}(t, 2)_1 - 27,64 \cdot \text{poly}(t, 2)_2 - 0,06 \cdot \sin\left(\frac{2\pi t}{365}\right) - 0,11 \cdot \cos\left(\frac{2\pi t}{365}\right)$$\
 
 ## Hledání optimálního SARIMA modelu
 
@@ -373,7 +378,6 @@ Vlny COVID-19 byly v tomto období více ovlivněny příchodem nových variant 
 **Nestacionární řada**: počty covidových případů, mají trend (rostou/klesají), sezónnost (vlny).
 
 ```{r}
-
 ts_diff <- diff(ts_log) # 1. diferenciace
 # Kontrola stacionarity
 adf_test <- adf.test(ts_diff)
@@ -436,7 +440,15 @@ checkresiduals(final_sarima)
 
 SARIMA model byl identifikován pomocí automatického vyhledávání. Model zachycuje jak autoregresní chování, tak sezónní komponenty. Diagnostika residuí ukazuje, zda jsou splněny předpoklady modelu.
 
-$$W_t = 0,0981 W_{t-1} + 0,2600 W_{t-2} - 0,1673 W_{t-3} - 0,2956 W_{t-4} + 0,0421 W_{t-5} + \epsilon_t - 0,8147 \epsilon_{t-1}$$ Model ARIMA(5,2,1) využívá 5 autoregresních členů a dvojitou diferenciaci k odstranění nestacionarity (trendu)
+$$W_t = 0,0981 W_{t-1} + 0,2600 W_{t-2} - 0,1673 W_{t-3} - 0,2956 W_{t-4} + 0,0421 W_{t-5} + \epsilon_t - 0,8147 \epsilon_{t-1}$$ Model ARIMA(5,2,1) využívá 5 autoregresních členů ($Y_{t-1}$ až $Y_{t-5}$), druhou diferenciaci (řada byla 2x diferencována pro dosažení stacionarity trendu) a 1 člen klouzavých průměrů ($\epsilon_{t-1}$).
+
+**Vysvětlení prvků:**
+
+-   $W_{t-1}, \dots, W_{t-5}$ jsou zpožděné hodnoty druhé diference (autoregresní část $p=5$).
+
+-   $\epsilon_t$ je náhodná složka (bílý šum) s rozptylem $\sigma^2 = 0,1274$.
+
+-   $-0,8147 \epsilon_{t-1}$ je složka klouzavých průměrů ($q=1$).
 
 ## Analýza závislosti na jiných řadách
 
@@ -538,11 +550,15 @@ models_comparison <- data.frame(
 print(models_comparison)
 ```
 
+Nulový odhad u `deaths_lag` s nulovou chybou naznačuje numerický problém nebo **multikolinearitu** – tato proměnná pravděpodobně nese stejnou informaci jako jiná proměnná v modelu nebo je v logaritmickém měřítku příliš malá, proto se model v tomto bodě zjednodušil vyřazením této proměnné.
+
 ARIMAX model kombinuje autoregresní chování s vlivem externích proměnných.
 
 #### Kontrola předpokladů regresních modelů
 
 Zde ověříme, zda naše modely splňují předpoklady, jako je nezávislost reziduí, heteroskedasticita (konstantní rozptyl), normalita reziduí a Ljung-Box test.
+
+Rezidua musí být **bílý šum** (nekorelovaná), mít konstantní rozptyl a normální rozdělení.
 
 **Při porušení předpokladů se dělá:**
 
@@ -556,7 +572,7 @@ Zde ověříme, zda naše modely splňují předpoklady, jako je nezávislost re
 # Diagnostika residuí pro všechny modely
 models_to_check <- list("Funkční" = model_no_season, "SARIMA" = final_sarima, "ARIMAX" = arimax_model)
 
-par(mfrow = c(2,2))
+par(mfrow = c(3,2))
 for(model_name in names(models_to_check)) {
   model <- models_to_check[[model_name]]
   if(inherits(model, "lm")) { residuals <- residuals(model) }  else { residuals <- residuals(model) }
@@ -568,10 +584,15 @@ for(model_name in names(models_to_check)) {
   # Normalita residuí
   shapiro_test <- shapiro.test(sample(residuals, min(5000, length(residuals)))) 
   print(paste(model_name, "- Shapiro test p-hodnota:", round(shapiro_test$p.value, 4))) # normalita 0 není plněna
+  # Heteroskedasticita - rozptyl reziduí
+  fit <- as.numeric(fitted(model))
+  # Graf pro kontrolu rozptylu
+  plot(fit, residuals, main = paste("Rozptyl -", model_name), xlab = "Vyrovnané hodnoty", ylab = "Rezidua")
+  abline(h = 0, col = "red", lty = 2)
 }
 
 # QQ plots pro normalitu
-par(mfrow = c(2,2))
+par(mfrow = c(2,1))
 for(model_name in names(models_to_check)) {
   model <- models_to_check[[model_name]]
   residuals <- residuals(model)
@@ -580,9 +601,36 @@ for(model_name in names(models_to_check)) {
 }
 ```
 
-Kontrola ukazuje, zda jsou splněny základní předpoklady modelů - nezávislost residuí (ACF, Ljung-Box test): - SARIMA a ARIMAX se prokázala nezávislost reziduí p \> 0.0. Rezidua jsou nezávislá a modely správně zachytily časovou dynamiku pandemie. - Funkční model - p = 0 znamená, že model je špatný. V reziduích zůstala silná autokorelace, kterou model neumí vysvětlit. Při autokorelaci: Bylo by nutné zvýšit řád ARIMA modelu (parametry $p$ nebo $q$), abychom zachytili zbývající závislost.
+Kontrola ukazuje, zda jsou splněny základní předpoklady modelů - nezávislost residuí (ACF, Ljung-Box test):
 
-Normalita (Shapiro test, Q-Q ploty se norprokázala ani u jednoho).
+\- SARIMA a ARIMAX se prokázala nezávislost reziduí p \> 0.05. Rezidua jsou nezávislá a modely správně zachytily časovou dynamiku pandemie.
+
+\- Funkční model - p = 0 znamená, že model je špatný. V reziduích zůstala silná autokorelace, kterou model neumí vysvětlit. Pokud rezidua nejsou nezávislá (autokorelace), je třeba zvýšit řád ARIMA modelu (parametry $p$ nebo $q$), abychom zachytili zbývající závislost.
+
+Normalita (Shapiro test, Q-Q ploty se norprokázala ani u jednoho). Pokud nejsou normální, zvažuje se jiná transformace dat (např. Box-Cox).
+
+Pokud jsou rezidua korelovaná, model je špatně specifikovaný (třeba chybí ARIMA člen). Pokud není konstantní rozptyl, zkusit logaritmování nebo Box-Cox transformaci.
+
+```{r}
+# boxcox transformace
+lambda <- BoxCox.lambda(ts_data)
+print(paste("Optimální lambda:", round(lambda, 4)))
+# Aplikujeme transformaci
+ts_boxcox <- BoxCox(ts_data, lambda)
+# SARIMA s box-cox transformací
+fit_sarima_boxcox <- auto.arima(ts_boxcox) # Sarima s box-cox transformací
+checkresiduals(fit_sarima_boxcox)
+# ARIMAX s boxcox transformací
+fit_arimax_boxcox <- auto.arima(ts_complete, xreg = external_complete, lambda = "auto")
+print(summary(fit_arimax_boxcox))
+# Funkční model s Box-cox transformací
+lambda_opt <- BoxCox.lambda(data$new_cases)
+print(paste("Optimální hodnota lambda:", round(lambda_opt, 4)))
+data$bc_new_cases <- BoxCox(data$new_cases, lambda_opt)
+model_bc <- lm(bc_new_cases ~ poly(t, 2), data = data)
+summary(model_bc)
+
+```
 
 ## Predikce budoucích hodnot
 
@@ -828,7 +876,9 @@ Všechny tři modely predikují pokles nebo stabilizaci nových případů.
 
 ## Závěr
 
-Výrazné rozdíly v predikcích (od 20 tis. u funkčního modelu po 5 mil. u ARIMAX) jsou způsobeny odlišným přístupem k trendu a vysokou citlivostí ARIMAX modelu na externí regresory (hospitalizace). Po zpětné transformaci z log-škály se tyto rozdíly exponenciálně zvýraznily“
+Výrazné rozdíly v predikcích (od 20 tis. u funkčního modelu po 5 mil. u ARIMAX) jsou způsobeny odlišným přístupem k trendu a vysokou citlivostí ARIMAX modelu na externí regresory (hospitalizace). Po zpětné transformaci z log-škály se tyto rozdíly exponenciálně zvýraznily.
+
+Důvodem je, že funkční model je deterministický (pouze křivka trendu a sezónnosti), zatímco ARIMAX je velmi citlivý na hodnoty **externích regresorů** (hospitalizace, úmrtí), které u COVID-19 vykazují extrémní výkyvy. Také zpětná transformace z log-škály (`expm1`) tyto rozdíly v predikcích dramaticky zvětšuje. Každý model (např. exponenciální vyrovnání vs. ARIMA) jinak interpretuje trend. Jeden ho může brát jako **deterministický** (pevná přímka), druhý jako **stochastický** (náhodný pohyb).
 
 **Hlavní závěry analýzy:**
 
