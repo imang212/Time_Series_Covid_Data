@@ -102,6 +102,7 @@ data$month <- as.numeric(format(data$date, "%m"))
 
 # Agregace na měsíční součty
 monthly_data <- data %>%
+  filter(date >= as.Date("2021-01-01")) %>%
   group_by(year, month, year_month) %>%
   summarise(
     new_cases = sum(new_cases, na.rm = TRUE),
@@ -122,6 +123,7 @@ data$week <- as.numeric(format(data$date, "%U"))  # týden v roce (0-53)
 data$year_week <- paste(data$year, sprintf("%02d", data$week), sep = "-W")
 
 data <- data %>%
+  filter(date >= as.Date("2021-01-01")) %>%
   group_by(year, week, year_week) %>%
   summarise(
     new_cases = sum(new_cases, na.rm = TRUE),
@@ -159,7 +161,7 @@ Summary:
 ```{r}
 start_year <- min(monthly_data$year)
 #start_month <- min(monthly_data$month[monthly_data$year == start_year])
-start_week <- min(data$week[data$year == start_year]+1)
+start_week <- min(data$week[data$year == start_year])
 
 ts_data <- ts(data$new_cases, start = c(start_year, start_week), frequency = 52.18)
 
@@ -347,7 +349,7 @@ print(comparison)
 best_func_model <- models[[which.min(comparison$AIC)]]
 print(summary(best_func_model))
 # Model bez roční sezónnosti pro srovnání
-model_no_season <- lm(log1p(new_cases) ~ poly(t, 2), data = data)
+model_no_season <- lm(log1p(new_cases) ~ poly(t, 2) + cos_365, data = data)
 print(summary(model_no_season))
 # Grafické zobrazení fitování
 data$fitted_func <-  expm1(fitted(model_no_season))
@@ -430,12 +432,14 @@ Data nevykazují silnou závislost na minulých hodnotách (kromě jedné slabé
 ```{r}
 cat("Hledání vhodné SARIMA kombinace...\n")
 (auto_sarima_a <- auto.arima(ts_log, seasonal = TRUE)) #Model ARIMA(5,2,1) využívá 5 autoregresních členů a dvojitou diferenciaci k odstranění nestacionarity (trendu)
-BIC(auto_sarima_a)
 #(auto_sarima_b <- auto.arima(ts_data, ic = "bic"))
 final_sarima <- auto_sarima_a
 # Diagnostika residuí
 checkresiduals(final_sarima)
 # Vlastní model
+(fit_own <- Arima(ts_log, order = c(1,0,2), seasonal = list(order = c(0,0,0))))
+checkresiduals(fit_own)
+final_sarima <- fit_own
 ```
 
 SARIMA model byl identifikován pomocí automatického vyhledávání. Model zachycuje jak autoregresní chování, tak sezónní komponenty. Diagnostika residuí ukazuje, zda jsou splněny předpoklady modelu.
