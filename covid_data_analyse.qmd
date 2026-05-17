@@ -2,6 +2,7 @@
 title: "Analýza covid dat"
 author: "Patrik Poklop, Tomáš Ladislav Kotek"
 format: html
+self-contained: true
 editor: visual
 ---
 
@@ -162,9 +163,7 @@ Summary:
 start_year <- min(monthly_data$year)
 #start_month <- min(monthly_data$month[monthly_data$year == start_year])
 start_week <- min(data$week[data$year == start_year])
-
 ts_data <- ts(data$new_cases, start = c(start_year, start_week), frequency = 52.18)
-
 cat("Počet pozorování:", length(ts_data), "\n")
 cat("Rozsah hodnot:", round(range(ts_data, na.rm = TRUE), 2), "\n")
 summary(ts_data)
@@ -251,7 +250,9 @@ ts_weekly_data <- ts(data$new_cases, start = c(start_year, start_week), frequenc
 ma_4 <- SMA(data$new_cases, n = 4) 
 ma_52 <- SMA(data$new_cases, n = 52.18) 
 # Exponenciální vyrovnání - jednodušší přístup
-exp_smooth_model <- HoltWinters(ts_weekly_data, gamma = FALSE)
+exp_smooth_model <- HoltWinters(ts_weekly_data, gamma = FALSE, seasonal = "multiplicative")
+exp_smooth_model
+plot(forecast(exp_smooth_model, h = 10))
 # Vytvoříme jednoduché exponenciální vyhlazení pomocí ETS
 ets_model <- ets(ts_weekly_data, model = "AAN", damped = FALSE)
 exp_smooth_fitted <- fitted(ets_model)
@@ -315,7 +316,6 @@ data$sin_7 <- sin(2 * pi * data$t / 4)
 data$cos_7 <- cos(2 * pi * data$t / 4)
 data$sin_1 <- sin(2 * pi * data$t / 1)
 data$cos_1 <- cos(2 * pi * data$t / 1)
-
 # Model 1: Lineární trend + roční sezónnost
 model1 <- lm(log1p(new_cases) ~ t + sin_365 + cos_365, data = data)
 # Model 2: Polynomiální trend + roční sezónnost
@@ -389,7 +389,9 @@ kpss_test <- kpss.test(ts_diff)
 print(paste("KPSS test p-hodnota:", round(kpss_test$p.value, 4)))
 ```
 
-ADF a KPSS testy říkají, že řada je nyní stacionární (p\<=0.05).
+ADF test říká, že řada je nyní stacionární (p\<=0.05).
+
+**Kontrola pomocí KPSS testu:** Funguje přesně obráceně – u něj chceme p-hodnotu **vysokou** ($> 0,05$), aby byla řada stacionární. Pokud oba testy (ADF i KPSS) potvrdí stacionaritu, model stojí na pevných základech.
 
 Výsledek p=0,01 říká, že:
 
@@ -432,19 +434,22 @@ Data nevykazují silnou závislost na minulých hodnotách (kromě jedné slabé
 ```{r}
 cat("Hledání vhodné SARIMA kombinace...\n")
 (auto_sarima_a <- auto.arima(ts_log, seasonal = TRUE)) #Model ARIMA(5,2,1) využívá 5 autoregresních členů a dvojitou diferenciaci k odstranění nestacionarity (trendu)
+(auto_sarima_b <- auto.arima(ts_log, seasonal = TRUE, ic= "bic"))
 #(auto_sarima_b <- auto.arima(ts_data, ic = "bic"))
 final_sarima <- auto_sarima_a
 # Diagnostika residuí
 checkresiduals(final_sarima)
 # Vlastní model
-(fit_own <- Arima(ts_log, order = c(1,0,2), seasonal = list(order = c(0,0,0))))
+(fit_own <- Arima(ts_log, order = c(0,1,2), seasonal = list(order = c(0,0,0)))) 
 checkresiduals(fit_own)
 final_sarima <- fit_own
 ```
 
 SARIMA model byl identifikován pomocí automatického vyhledávání. Model zachycuje jak autoregresní chování, tak sezónní komponenty. Diagnostika residuí ukazuje, zda jsou splněny předpoklady modelu.
 
-$$W_t = 0,0981 W_{t-1} + 0,2600 W_{t-2} - 0,1673 W_{t-3} - 0,2956 W_{t-4} + 0,0421 W_{t-5} + \epsilon_t - 0,8147 \epsilon_{t-1}$$ Model ARIMA(5,2,1) využívá 5 autoregresních členů ($Y_{t-1}$ až $Y_{t-5}$), druhou diferenciaci (řada byla 2x diferencována pro dosažení stacionarity trendu) a 1 člen klouzavých průměrů ($\epsilon_{t-1}$).
+$$W_t = 0,0981 W_{t-1} + 0,2600 W_{t-2} - 0,1673 W_{t-3} - 0,2956 W_{t-4} + 0,0421 W_{t-5} + \epsilon_t - 0,8147 \epsilon_{t-1}$$Model ARIMA(5,2,1) využívá 5 autoregresních členů ($Y_{t-1}$ až $Y_{t-5}$), druhou diferenciaci (řada byla 2x diferencována pro dosažení stacionarity trendu) a 1 člen klouzavých průměrů ($\epsilon_{t-1}$).
+
+Zjednodušený $ARIMA(0,1,2)$ bez sezónní složky. To znamená, že se dívá pouze na bezprostřední minulost (poslední 2 týdny pomocí složky klouzavých průměrů $MA(2)$). Nedokáže tak zachytit dlouhodobější závislosti nebo vlny, a ty pak „straší“ v reziduích na vzdálenějších lagech.
 
 **Vysvětlení prvků:**
 
@@ -528,11 +533,11 @@ Kombinace časové dynamiky ARIMA s vlivem externích faktorů. Arimax model zac
 
 ```{r}
 # Příprava zpožděných proměnných na základě CCF analýzy
-data$stringency_lag <- c(rep(NA, 5), data$stringency_index[1:(nrow(data)-5)])
 data$hosp_lag <- c(rep(NA, 2), data$hosp_patients[1:(nrow(data)-2)])
+data$reproduction_rate <- c(rep(NA, 4), data$reproduction_rate[1:(nrow(data)-4)])
 
 # Model s externími regresory
-external_vars <- cbind(stringency_lag = data$stringency_lag, hosp_lag = data$hosp_lag)
+external_vars <- cbind(hosp_lag = data$hosp_lag, reproduction_rate = data$reproduction_rate)
 
 # Odstranění NA hodnot
 complete_idx <- complete.cases(cbind(data$new_cases, external_vars))
@@ -542,6 +547,7 @@ external_complete <- external_vars[complete_idx, ]
 # ARIMAX model
 arimax_model <- auto.arima(ts_complete, xreg = external_complete)
 print(summary(arimax_model))
+checkresiduals(arimax_model)
 length(fitted(arimax_model))
 
 # Srovnání modelů
@@ -631,10 +637,19 @@ print(summary(fit_arimax_boxcox))
 lambda_opt <- BoxCox.lambda(data$new_cases)
 print(paste("Optimální hodnota lambda:", round(lambda_opt, 4)))
 data$bc_new_cases <- BoxCox(data$new_cases, lambda_opt)
-model_bc <- lm(bc_new_cases ~ poly(t, 2), data = data)
+model_bc <- lm(bc_new_cases ~ poly(t, 2) + cos_365, data = data)
 summary(model_bc)
-
+# kontrola normality
+par(mfrow = c(2,1))
+for(model_name in names(list("Funkční" = model_bc, "SARIMA" = fit_sarima_boxcox, "ARIMAX" = fit_arimax_boxcox))) {
+  model <- models_to_check[[model_name]]
+  residuals <- residuals(model)
+  qqnorm(residuals, main = paste("Q-Q plot -", model_name))
+  qqline(residuals)
+}
 ```
+
+Protože nám v box-cox testu vyšla lambda hodnota blízká 0, známená to, že logaritmus byl v pořádku a box-cox nám to už víc nezlepší.
 
 ## Predikce budoucích hodnot
 
@@ -667,9 +682,9 @@ future_data <- data.frame(
   cos_7 = cos(2 * pi * future_t / 1)
 )
 # Jednoduchá predikce bez složitého rozlišování modelů
-pred_func <- predict(model_no_season, newdata = future_data, interval = "prediction")
+pred_func <- predict(model_bc, newdata = future_data, interval = "prediction")
 # zpět na původní škálu
-pred_func <- expm1(pred_func)
+pred_func <- InvBoxCox(pred_func, lambda_opt)
 cat("Funkční model - predikce dokončena\n")
 
 # SARIMA predikce
@@ -800,9 +815,9 @@ prediction_plot <- ggplot(plot_data_clean, aes(x = date)) +
   geom_point(aes(y = sarima_pred), color = "blue", size = 1.2, na.rm = TRUE) +
   geom_ribbon(aes(ymin = sarima_lower, ymax = sarima_upper), fill = "blue", alpha = 0.2, na.rm = TRUE) +
   # ARIMAX model
-  #geom_line(aes(y = arimax_pred), color = "green", size = 1, na.rm = TRUE) +
-  #geom_point(aes(y = arimax_pred), color = "green", size = 1.2, na.rm = TRUE) +
-  #geom_ribbon(aes(ymin = arimax_lower, ymax = arimax_upper), fill = "green", alpha = 0.2, na.rm = TRUE) +
+  geom_line(aes(y = arimax_pred), color = "green", size = 1, na.rm = TRUE) +
+  geom_point(aes(y = arimax_pred), color = "green", size = 1.2, na.rm = TRUE) +
+  geom_ribbon(aes(ymin = arimax_lower, ymax = arimax_upper), fill = "green", alpha = 0.2, na.rm = TRUE) +
   # Vertikální čára oddělující historii od predikcí
   geom_vline(xintercept = max(historical_dates), linetype = "dashed", alpha = 0.7, color = "gray50", size = 1) +
   # Lepší popisky a téma
